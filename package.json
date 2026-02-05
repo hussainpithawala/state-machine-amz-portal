@@ -2,25 +2,44 @@
   "name": "state-machine-amz-portal",
   "version": "0.1.0",
   "private": true,
+  "description": "Web portal for monitoring AWS Step Functions compatible state machines",
+  "author": "Hussain Pithawala <hussainpithawala@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hussainpithawala/state-machine-amz-portal.git"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "next lint",
+    "db:push": "drizzle-kit push:pg",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "drizzle-orm": "^0.30.4",
+    "pg": "^8.11.5",
+    "lucide-react": "^0.563.0",
+    "date-fns": "^3.6.0",
+    "zod": "^3.23.8",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.3.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.20.14",
+    "@types/pg": "^8.11.6",
+    "typescript": "^5",
+    "tailwindcss": "^4",
+    "postcss": "^8",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@tailwindcss/postcss": "^4"
   }
 }
