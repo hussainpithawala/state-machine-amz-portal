@@ -21,7 +21,7 @@ import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 
 interface StateMachinesResponse {
-    results: StateMachine[];
+    data: StateMachine[];        // ✅ Changed from 'results' to 'data'
     pagination: {
         page: number;
         pageSize: number;
@@ -63,23 +63,24 @@ export default function StateMachinesPage() {
                 throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch state machines`);
             }
 
-            const apiResponse = await response.json(); // ← Remove the destructuring!
+            const apiResponse = await response.json();
 
-            // Ensure results is always an array
-            setStateMachines(apiResponse.results || []);
+            // ✅ FIX: Use 'data' instead of 'results'
+            const resultsArray = Array.isArray(apiResponse.data) ? apiResponse.data : [];
+
+            setStateMachines(resultsArray);
             setTotalPages(apiResponse.pagination?.totalPages || 1);
             setTotalItems(apiResponse.pagination?.total || 0);
         } catch (err) {
             console.error('Error fetching state machines:', err);
             setError(err instanceof Error ? err.message : 'An unknown error occurred');
-            setStateMachines([]); // Reset to empty array on error
+            setStateMachines([]);
             setTotalPages(1);
             setTotalItems(0);
         } finally {
             setLoading(false);
         }
     };
-
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1); // Reset to first page on search

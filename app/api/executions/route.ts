@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
             .offset(offset);
 
         return NextResponse.json({
-            data: results,
+            results,                 // ✅ Just 'results' (not wrapped in 'data')
             pagination: {
                 page,
                 pageSize,
@@ -155,3 +155,4 @@ export async function GET(request: NextRequest) {
         );
     }
 }
+
