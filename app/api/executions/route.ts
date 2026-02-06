@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { executions } from '@/lib/schema';
+import {NextRequest, NextResponse} from 'next/server';
+import {db} from '@/lib/db';
+import {executions, stateHistory} from '@/lib/schema'; // ✅ Added stateHistory import
 import {
     eq,
     sql,
@@ -9,12 +9,11 @@ import {
     count,
     gte,
     lte,
-    inArray,
     desc,
     asc
 } from 'drizzle-orm';
-import { z } from 'zod';
-import { subDays, startOfDay, endOfDay } from 'date-fns';
+import {z} from 'zod';
+import {subDays, startOfDay, endOfDay} from 'date-fns';
 
 // Validation schema
 const executionsQuerySchema = z.object({
@@ -33,7 +32,7 @@ const executionsQuerySchema = z.object({
 
 export async function GET(request: NextRequest) {
     try {
-        const { searchParams } = new URL(request.url);
+        const {searchParams} = new URL(request.url);
         const validated = executionsQuerySchema.parse(Object.fromEntries(searchParams));
 
         // Handle single execution lookup
@@ -51,9 +50,23 @@ export async function GET(request: NextRequest) {
                     { status: 404 }
                 );
             }
-            return NextResponse.json(execution);
+
+            // Get the execution_start_time from state_history
+            const [firstState] = await db
+                .select({ executionStartTime: stateHistory.executionStartTime })
+                .from(stateHistory)
+                .where(eq(stateHistory.executionId, validated.executionId))
+                .orderBy(asc(stateHistory.sequenceNumber))
+                .limit(1);
+
+            // Return execution with the correct execution_start_time
+            return NextResponse.json({
+                ...execution,
+                executionStartTime: firstState?.executionStartTime || execution.startTime
+            });
         }
 
+        // Handle list view (when no executionId is provided)
         const page = parseInt(validated.page);
         const pageSize = parseInt(validated.pageSize);
         const offset = (page - 1) * pageSize;
@@ -109,7 +122,7 @@ export async function GET(request: NextRequest) {
 
         // Get total count
         const countResult = await db
-            .select({ total: count() })
+            .select({total: count()})
             .from(executions)
             .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
 
@@ -150,9 +163,8 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error('Error fetching executions:', error);
         return NextResponse.json(
-            { error: 'Failed to fetch executions' },
-            { status: 500 }
+            {error: 'Failed to fetch executions'},
+            {status: 500}
         );
     }
 }
-

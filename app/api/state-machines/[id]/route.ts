@@ -5,10 +5,10 @@ import { eq } from 'drizzle-orm';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> } // ✅ Note: Promise<{ id: string }>
 ) {
     try {
-        const { id } = params;
+        const { id } = await params; // ✅ Await the params Promise
 
         const [stateMachine] = await db
             .select()

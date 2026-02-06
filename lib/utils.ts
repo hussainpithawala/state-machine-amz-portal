@@ -11,8 +11,21 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Format a date to a human-readable string
  */
-export function formatDate(date: Date | string): string {
+/**
+ * Format a date to a human-readable string
+ */
+export function formatDate(date: Date | string | null | undefined): string {
+  // Handle null, undefined, or empty values
+  if (!date) {
+    return 'N/A';
+  }
+
   const d = typeof date === 'string' ? new Date(date) : date;
+
+  // Check if the date is valid
+  if (isNaN(d.getTime())) {
+    return 'Invalid Date';
+  }
 
   return d.toLocaleString('en-US', {
     year: 'numeric',
@@ -24,15 +37,27 @@ export function formatDate(date: Date | string): string {
     hour12: true
   });
 }
-
 /**
  * Format duration between two dates
  */
-export function formatDuration(start: Date | string, end?: Date | string): string {
+/**
+ * Format duration between two dates
+ */
+export function formatDuration(start: Date | string | null | undefined, end?: Date | string | null | undefined): string {
+  // Handle null/undefined start time
+  if (!start) {
+    return 'N/A';
+  }
+
   const startTime = typeof start === 'string' ? new Date(start) : start;
   const endTime = end
       ? (typeof end === 'string' ? new Date(end) : end)
       : new Date();
+
+  // Check if dates are valid
+  if (isNaN(startTime.getTime())) {
+    return 'Invalid Start Time';
+  }
 
   const diff = endTime.getTime() - startTime.getTime();
 
@@ -142,3 +167,4 @@ export function copyToClipboard(text: string): Promise<boolean> {
 export function generateId(prefix: string = ''): string {
   return `${prefix}${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
+

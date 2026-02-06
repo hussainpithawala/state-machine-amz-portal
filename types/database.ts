@@ -45,13 +45,13 @@ export interface Execution {
     input?: Record<string, any>;
     output?: Record<string, any>;
     status: ExecutionStatus;
-    startTime: Date;
-    endTime?: Date;
+    startTime: string; // ✅ Should be string, not Date
+    endTime?: string;  // ✅ Should be string, not Date
     currentState: string;
     error?: string;
-    meta Record<string, any>;
-    createdAt: Date;
-    updatedAt: Date;
+    metadata: Record<string, any>;
+    createdAt: string;   // ✅ All timestamps as strings
+    updatedAt: string;
 }
 
 export interface StateHistoryEntry {

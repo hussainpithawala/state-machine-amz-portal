@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { stateHistory } from '@/lib/schema';
-import { eq, and, asc } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-// Validation schema
+// Validation schema - only executionId is required
 const stateHistoryQuerySchema = z.object({
     executionId: z.string().min(1, 'Execution ID is required'),
-    executionStartTime: z.string().min(1, 'Execution start time is required'),
 });
 
 export async function GET(request: NextRequest) {
@@ -15,26 +14,36 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const validated = stateHistoryQuerySchema.parse(Object.fromEntries(searchParams));
 
-        // Convert ISO string to Date
-        const startTime = new Date(validated.executionStartTime);
+        // Query using only executionId - this should be sufficient
+        const historyResult = await db.execute(sql`
+            SELECT 
+                id,
+                execution_id,
+                execution_start_time,
+                state_name,
+                state_type,
+                input,
+                output,
+                status,
+                start_time,
+                end_time,
+                error,
+                retry_count,
+                sequence_number,
+                metadata,
+                created_at
+            FROM state_history 
+            WHERE execution_id = ${validated.executionId}
+            ORDER BY sequence_number ASC
+        `);
 
-        // Fetch state history entries
-        const history = await db
-            .select()
-            .from(stateHistory)
-            .where(
-                and(
-                    eq(stateHistory.executionId, validated.executionId),
-                    eq(stateHistory.executionStartTime, startTime)
-                )
-            )
-            .orderBy(asc(stateHistory.sequenceNumber));
+        const history = 'rows' in historyResult ? historyResult.rows : historyResult;
 
         if (history.length === 0) {
             return NextResponse.json(
                 {
                     error: 'No state history found for this execution',
-                    hint: 'Ensure executionStartTime matches exactly with database value'
+                    hint: 'Ensure the execution ID is correct and has state history records'
                 },
                 { status: 404 }
             );
@@ -43,8 +52,8 @@ export async function GET(request: NextRequest) {
         // Calculate durations and enrich data
         const enrichedHistory = history.map(entry => ({
             ...entry,
-            duration: entry.endTime
-                ? new Date(entry.endTime).getTime() - new Date(entry.startTime).getTime()
+            duration: entry.end_time
+                ? new Date(entry.end_time).getTime() - new Date(entry.start_time).getTime()
                 : null,
             inputPreview: entry.input ? JSON.stringify(entry.input).substring(0, 100) : null,
             outputPreview: entry.output ? JSON.stringify(entry.output).substring(0, 100) : null,
@@ -53,13 +62,13 @@ export async function GET(request: NextRequest) {
         // Get execution summary
         const firstState = enrichedHistory[0];
         const lastState = enrichedHistory[enrichedHistory.length - 1];
-        const totalDuration = lastState.endTime
-            ? new Date(lastState.endTime).getTime() - new Date(firstState.startTime).getTime()
+        const totalDuration = lastState.end_time
+            ? new Date(lastState.end_time).getTime() - new Date(firstState.start_time).getTime()
             : null;
 
         return NextResponse.json({
             executionId: validated.executionId,
-            executionStartTime: validated.executionStartTime,
+            executionStartTime: firstState.execution_start_time, // Include this for reference
             totalStates: enrichedHistory.length,
             totalDuration,
             states: enrichedHistory,
