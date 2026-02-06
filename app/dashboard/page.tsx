@@ -13,11 +13,20 @@ import {
     TrendingUp,
     Clock,
     CheckCircle2,
-    XCircle
+    XCircle,
+    Heart,
 } from 'lucide-react';
 import {formatDuration, formatDate} from '@/lib/utils';
 import {Skeleton} from '@/components/ui/skeleton';
 import Link from 'next/link';
+
+interface ServiceHealth {
+    status: 'UP' | 'DOWN';
+    statusCode: number | null;
+    message?: string;
+    data?: any;
+    timestamp: string;
+}
 
 interface DashboardStats {
     statusCounts: Array<{ status: string; count: number }>;
@@ -40,13 +49,46 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
+    const [serviceHealth, setServiceHealth] = useState<ServiceHealth | null>(null);
+    const [healthLoading, setHealthLoading] = useState(true);
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        fetchServiceHealth();
         fetchStats();
+        // Auto-refresh health every 30 seconds
+        const healthInterval = setInterval(() => {
+            fetchServiceHealth();
+        }, 30000);
+
+        return () => clearInterval(healthInterval);
     }, []);
+
+    const fetchServiceHealth = async () => {
+        try {
+            setHealthLoading(true);
+            const response = await fetch('/api/service-health');
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch service health');
+            }
+
+            const healthData = await response.json();
+            setServiceHealth(healthData);
+        } catch (err) {
+            console.error('Error fetching service health:', err);
+            setServiceHealth({
+                status: 'DOWN',
+                statusCode: null,
+                message: err instanceof Error ? err.message : 'Failed to fetch health status',
+                timestamp: new Date().toISOString(),
+            });
+        } finally {
+            setHealthLoading(false);
+        }
+    };
 
     const fetchStats = async () => {
         try {
@@ -133,7 +175,10 @@ export default function DashboardPage() {
                         : 'N/A'}
                     icon={Clock}
                     subtitle="Last 7 days"
-                /></div>
+                />
+                {/* Add Service Health Card */}
+                <ServiceHealthCard health={serviceHealth} loading={healthLoading}/>
+            </div>
 
             {/* Status Breakdown & Recent Failures */}
             <div className="grid gap-4 md:grid-cols-2">
@@ -220,6 +265,66 @@ export default function DashboardPage() {
                 </Card>
             </div>
         </div>
+    );
+}
+
+function ServiceHealthCard({health, loading}: { health: ServiceHealth | null; loading: boolean }) {
+    if (loading) {
+        return (
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Service Health</CardTitle>
+                    <Heart className="h-4 w-4 text-gray-400"/>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center space-x-2">
+                        <Skeleton className="h-6 w-24"/>
+                        <Skeleton className="h-4 w-16"/>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (!health) {
+        return (
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Service Health</CardTitle>
+                    <Heart className="h-4 w-4 text-gray-400"/>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold text-red-600">ERROR</div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    const isHealthy = health.status === 'UP';
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Service Health</CardTitle>
+                <Heart className={`h-4 w-4 ${isHealthy ? 'text-green-500' : 'text-red-500'}`}/>
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">
+          <span className={isHealthy ? 'text-green-600' : 'text-red-600'}>
+            {health.status}
+          </span>
+                </div>
+                {health.statusCode && (
+                    <p className="text-xs text-gray-500 mt-1">Status: {health.statusCode}</p>
+                )}
+                {health.message && (
+                    <p className="text-xs text-red-600 mt-1">{health.message}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                    Updated: {new Date(health.timestamp).toLocaleTimeString()}
+                </p>
+            </CardContent>
+        </Card>
     );
 }
 
