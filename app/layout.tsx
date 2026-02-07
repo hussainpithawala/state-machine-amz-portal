@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { Toaster } from "@/components/ui/sonner"; // ✅ Import from sonner
 import './globals.css';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,7 @@ export default function RootLayout({
             inter.variable
         )}>
         {children}
+        <Toaster /> {/* ✅ This is the Sonner Toaster */}
         </body>
         </html>
     );

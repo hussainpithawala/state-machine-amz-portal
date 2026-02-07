@@ -1,21 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import {usePathname} from 'next/navigation';
 import {
     LayoutDashboard,
     GitBranch,
     History,
     Settings,
     Database,
-    Zap
+    Plus,
+    Zap,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import {cn} from '@/lib/utils';
 
 const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'State Machines', href: '/dashboard/state-machines', icon: GitBranch },
-    { name: 'Executions', href: '/dashboard/executions', icon: History },
+    {name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard},
+    {name: 'State Machines', href: '/dashboard/state-machines', icon: GitBranch},
+    {name: 'Executions', href: '/dashboard/executions', icon: History},
+    {name: 'Create State Machine', href: '/dashboard/state-machines/new', icon: Plus}
 ];
 
 export function Sidebar() {
@@ -25,7 +27,7 @@ export function Sidebar() {
         <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
             <div className="flex h-16 items-center px-6 border-b border-gray-200">
                 <div className="flex items-center space-x-2">
-                    <Zap className="h-6 w-6 text-blue-600" />
+                    <Zap className="h-6 w-6 text-blue-600"/>
                     <span className="font-semibold text-xl text-gray-900">StateMachine</span>
                 </div>
             </div>
@@ -48,7 +50,7 @@ export function Sidebar() {
                                 <item.icon className={cn(
                                     'mr-3 h-5 w-5',
                                     isActive ? 'text-blue-600' : 'text-gray-400'
-                                )} />
+                                )}/>
                                 {item.name}
                             </Link>
                         );
