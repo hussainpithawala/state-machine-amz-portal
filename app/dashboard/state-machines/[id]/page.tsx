@@ -18,7 +18,7 @@ import {
     Edit,
     Trash2,
     Copy,
-    Download
+    Download, ExternalLink
 } from 'lucide-react';
 import { StateMachine } from '@/types/database';
 import { formatDate, formatDuration, copyToClipboard, formatJson } from '@/lib/utils';
