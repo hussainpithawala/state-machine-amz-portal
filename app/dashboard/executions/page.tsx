@@ -1,26 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import {useState, useEffect} from 'react';
+import {useRouter, useSearchParams} from 'next/navigation';
+import {Button} from '@/components/ui/button';
+import {Input} from '@/components/ui/input';
+import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
+import {Badge} from '@/components/ui/badge';
 import {
     Search,
     History,
     Filter,
     Calendar,
-    Clock,
     ExternalLink,
     ChevronLeft,
     ChevronRight,
-    Play,
-    AlertCircle
 } from 'lucide-react';
-import { Execution } from '@/types/database';
-import { formatDate, formatDuration, getStatusColor } from '@/lib/utils';
+import {Execution} from '@/types/database';
+import {formatDate, formatDuration, getStatusColor} from '@/lib/utils';
 import Link from 'next/link';
 import {
     Select,
@@ -29,7 +26,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover";
 
 interface ExecutionsResponse {
     results: Execution[];
@@ -47,20 +44,20 @@ interface ExecutionsResponse {
 }
 
 const STATUS_OPTIONS = [
-    { value: 'RUNNING', label: 'Running' },
-    { value: 'SUCCEEDED', label: 'Succeeded' },
-    { value: 'FAILED', label: 'Failed' },
-    { value: 'CANCELLED', label: 'Cancelled' },
-    { value: 'TIMED_OUT', label: 'Timed Out' },
-    { value: 'ABORTED', label: 'Aborted' },
-    { value: 'PAUSED', label: 'Paused' },
+    {value: 'RUNNING', label: 'Running'},
+    {value: 'SUCCEEDED', label: 'Succeeded'},
+    {value: 'FAILED', label: 'Failed'},
+    {value: 'CANCELLED', label: 'Cancelled'},
+    {value: 'TIMED_OUT', label: 'Timed Out'},
+    {value: 'ABORTED', label: 'Aborted'},
+    {value: 'PAUSED', label: 'Paused'},
 ];
 
 const DATE_RANGE_OPTIONS = [
-    { value: 'today', label: 'Today' },
-    { value: '7d', label: 'Last 7 days' },
-    { value: '30d', label: 'Last 30 days' },
-    { value: '90d', label: 'Last 90 days' },
+    {value: 'today', label: 'Today'},
+    {value: '7d', label: 'Last 7 days'},
+    {value: '30d', label: 'Last 30 days'},
+    {value: '90d', label: 'Last 90 days'},
 ];
 
 export default function ExecutionsPage() {
@@ -94,10 +91,10 @@ export default function ExecutionsPage() {
             const params = new URLSearchParams({
                 page: currentPage.toString(),
                 pageSize: pageSize.toString(),
-                ...(searchQuery && { search: searchQuery }),
-                ...(statusFilter && { status: statusFilter }),
-                ...(dateRangeFilter && { dateRange: dateRangeFilter }),
-                ...(stateMachineFilter && { stateMachineId: stateMachineFilter }),
+                ...(searchQuery && {search: searchQuery}),
+                ...(statusFilter && {status: statusFilter}),
+                ...(dateRangeFilter && {dateRange: dateRangeFilter}),
+                ...(stateMachineFilter && {stateMachineId: stateMachineFilter}),
             });
 
             const response = await fetch(`/api/executions?${params}`);
@@ -174,10 +171,6 @@ export default function ExecutionsPage() {
                         {totalItems} execution{totalItems !== 1 ? 's' : ''} found
                     </p>
                 </div>
-                <Button onClick={() => router.push('/dashboard/executions/new')}>
-                    <Play className="h-4 w-4 mr-2" />
-                    Start New Execution
-                </Button>
             </div>
 
             {/* Filters */}
@@ -186,7 +179,7 @@ export default function ExecutionsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {/* Search */}
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"/>
                             <Input
                                 placeholder="Search by name or ID..."
                                 value={searchQuery}
@@ -201,7 +194,7 @@ export default function ExecutionsPage() {
                             onValueChange={handleStatusChange}
                         >
                             <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Filter by status" />
+                                <SelectValue placeholder="Filter by status"/>
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Statuses</SelectItem>
@@ -219,8 +212,8 @@ export default function ExecutionsPage() {
                             onValueChange={handleDateRangeChange}
                         >
                             <SelectTrigger className="w-full">
-                                <Calendar className="h-4 w-4 mr-2" />
-                                <SelectValue placeholder="Select date range" />
+                                <Calendar className="h-4 w-4 mr-2"/>
+                                <SelectValue placeholder="Select date range"/>
                             </SelectTrigger>
                             <SelectContent>
                                 {DATE_RANGE_OPTIONS.map(option => (
@@ -258,18 +251,18 @@ export default function ExecutionsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center">
-                        <History className="h-5 w-5 mr-2 text-blue-500" />
+                        <History className="h-5 w-5 mr-2 text-blue-500"/>
                         Execution List
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
-                        <ExecutionsSkeleton rows={pageSize} />
+                        <ExecutionsSkeleton rows={pageSize}/>
                     ) : executions.length === 0 ? (
                         <div className="text-center py-12 text-gray-500">
                             {hasActiveFilters() ? (
                                 <>
-                                    <Filter className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                                    <Filter className="h-12 w-12 mx-auto mb-4 text-gray-300"/>
                                     <p className="text-lg font-medium mb-2">No executions found</p>
                                     <p className="text-sm">Try adjusting your filters</p>
                                     <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>
@@ -278,7 +271,7 @@ export default function ExecutionsPage() {
                                 </>
                             ) : (
                                 <>
-                                    <History className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                                    <History className="h-12 w-12 mx-auto mb-4 text-gray-300"/>
                                     <p className="text-lg font-medium mb-2">No executions yet</p>
                                     <p className="text-sm">Start a new execution to see it here</p>
                                 </>
@@ -301,7 +294,8 @@ export default function ExecutionsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {executions.map((execution) => (
-                                            <TableRow key={`${execution.executionId}-${execution.startTime}`} className="hover:bg-gray-50">
+                                            <TableRow key={`${execution.executionId}-${execution.startTime}`}
+                                                      className="hover:bg-gray-50">
                                                 <TableCell className="font-medium max-w-xs truncate">
                                                     <Link
                                                         href={`/dashboard/executions/${encodeURIComponent(execution.executionId)}`}
@@ -338,8 +332,9 @@ export default function ExecutionsPage() {
                                                         size="sm"
                                                         asChild
                                                     >
-                                                        <Link href={`/dashboard/executions/${encodeURIComponent(execution.executionId)}`}>
-                                                            <ExternalLink className="h-4 w-4 mr-1" />
+                                                        <Link
+                                                            href={`/dashboard/executions/${encodeURIComponent(execution.executionId)}`}>
+                                                            <ExternalLink className="h-4 w-4 mr-1"/>
                                                             View
                                                         </Link>
                                                     </Button>
@@ -363,7 +358,7 @@ export default function ExecutionsPage() {
                                         onClick={() => handlePageChange(currentPage - 1)}
                                         disabled={currentPage === 1}
                                     >
-                                        <ChevronLeft className="h-4 w-4" />
+                                        <ChevronLeft className="h-4 w-4"/>
                                         Previous
                                     </Button>
                                     <span className="text-sm text-gray-600">
@@ -376,7 +371,7 @@ export default function ExecutionsPage() {
                                         disabled={currentPage === totalPages}
                                     >
                                         Next
-                                        <ChevronRight className="h-4 w-4 ml-1" />
+                                        <ChevronRight className="h-4 w-4 ml-1"/>
                                     </Button>
                                 </div>
                             </div>
@@ -388,16 +383,16 @@ export default function ExecutionsPage() {
     );
 }
 
-function ExecutionsSkeleton({ rows = 10 }: { rows?: number }) {
+function ExecutionsSkeleton({rows = 10}: { rows?: number }) {
     return (
         <div className="space-y-3">
             {[...Array(rows)].map((_, i) => (
                 <div key={i} className="flex items-center justify-between p-4 border-b last:border-b-0">
                     <div className="space-y-2 flex-1">
-                        <div className="h-5 w-48 bg-gray-200 rounded animate-pulse" />
-                        <div className="h-4 w-64 bg-gray-200 rounded animate-pulse" />
+                        <div className="h-5 w-48 bg-gray-200 rounded animate-pulse"/>
+                        <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"/>
                     </div>
-                    <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-8 w-24 bg-gray-200 rounded animate-pulse"/>
                 </div>
             ))}
         </div>
