@@ -284,7 +284,7 @@ export default function ExecutionsPage() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Execution ID</TableHead>
-                                            <TableHead>State Machine</TableHead>
+                                            <TableHead>Execution Name</TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead>Started</TableHead>
                                             <TableHead>Duration</TableHead>
