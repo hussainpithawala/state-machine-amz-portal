@@ -74,3 +74,35 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+/* Calendar styling fixes */
+.rdp {
+  --rdp-cell-size: 2.5rem; /* 40px - perfect size */
+}
+
+.rdp-day_button {
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  min-width: 2.5rem !important;
+  min-height: 2.5rem !important;
+}
+
+.rdp-months {
+  gap: 0.75rem !important; /* 12px gap between months */
+}
+
+.rdp-week {
+  margin-top: 0.5rem !important; /* 8px gap between weeks */
+}
+
+.rdp-weekday {
+  padding: 0.25rem 0 !important; /* Reduce weekday padding */
+}
+
+/* Ensure proper spacing in modal */
+@media (min-width: 768px) {
+  .rdp-month {
+    min-width: 220px !important;
+  }
+}

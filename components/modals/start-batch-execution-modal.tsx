@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
     Dialog,
     DialogContent,
@@ -20,8 +19,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Play, Layers, Calendar, Filter, Users, Zap, StopCircle } from 'lucide-react';
+import { Filter, Layers, Loader2, Play, StopCircle, Zap } from "lucide-react";
 import { toast } from 'sonner';
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 interface StartBatchExecutionModalProps {
     stateMachineId: string;
@@ -38,8 +38,8 @@ export function StartBatchExecutionModal({
     const [formData, setFormData] = useState({
         sourceStateMachineId: '',
         status: '',
-        startTimeFrom: '',
-        startTimeTo: '',
+        startTimeFrom: null as Date | null,
+        startTimeTo: null as Date | null,
         namePattern: '',
         limit: '10',
         namePrefix: `batch-${stateMachineName.replace(/\s+/g, '-')}-${Date.now()}`,
@@ -56,6 +56,14 @@ export function StartBatchExecutionModal({
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value
+        }));
+        setError(null);
+    };
+
+    const handleDateChange = (name: string, date: Date | null | undefined) => {
+        setFormData(prev => ({
+            ...prev,
+            [name]: date // This will be Date | null | undefined, matching your state
         }));
         setError(null);
     };
@@ -92,17 +100,6 @@ export function StartBatchExecutionModal({
             return;
         }
 
-        // Validate timestamp fields if provided
-        if (formData.startTimeFrom && isNaN(parseInt(formData.startTimeFrom))) {
-            setError('Start Time From must be a valid timestamp');
-            return;
-        }
-
-        if (formData.startTimeTo && isNaN(parseInt(formData.startTimeTo))) {
-            setError('Start Time To must be a valid timestamp');
-            return;
-        }
-
         setLoading(true);
         setError(null);
 
@@ -123,12 +120,13 @@ export function StartBatchExecutionModal({
                 requestBody.filter.status = formData.status;
             }
 
+            // Convert Date objects to Unix timestamps
             if (formData.startTimeFrom) {
-                requestBody.filter.startTimeFrom = parseInt(formData.startTimeFrom);
+                requestBody.filter.startTimeFrom = Math.floor(formData.startTimeFrom.getTime() / 1000);
             }
 
             if (formData.startTimeTo) {
-                requestBody.filter.startTimeTo = parseInt(formData.startTimeTo);
+                requestBody.filter.startTimeTo = Math.floor(formData.startTimeTo.getTime() / 1000);
             }
 
             if (formData.namePattern) {
@@ -182,7 +180,7 @@ export function StartBatchExecutionModal({
                     Start Batch Execution
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-6xl">
                 <DialogHeader>
                     <DialogTitle>Start Batch Execution</DialogTitle>
                     <DialogDescription>
@@ -251,32 +249,27 @@ export function StartBatchExecutionModal({
                             </div>
                         </div>
 
+                        {/* Date Time Pickers */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label htmlFor="startTimeFrom" className="text-sm font-medium">
-                                    Start Time From (Unix timestamp)
+                                    Start Time From
                                 </label>
-                                <Input
-                                    id="startTimeFrom"
-                                    name="startTimeFrom"
-                                    value={formData.startTimeFrom}
-                                    onChange={handleChange}
-                                    placeholder="1770532807"
-                                    disabled={loading}
+                                <DateTimePicker
+                                    date={formData.startTimeFrom}
+                                    onChange={(date) => handleDateChange('startTimeFrom', date)}
+                                    placeholder="Pick start date & time"
                                 />
                             </div>
 
                             <div className="space-y-2">
                                 <label htmlFor="startTimeTo" className="text-sm font-medium">
-                                    Start Time To (Unix timestamp)
+                                    Start Time To
                                 </label>
-                                <Input
-                                    id="startTimeTo"
-                                    name="startTimeTo"
-                                    value={formData.startTimeTo}
-                                    onChange={handleChange}
-                                    placeholder="1770532807"
-                                    disabled={loading}
+                                <DateTimePicker
+                                    date={formData.startTimeTo}
+                                    onChange={(date) => handleDateChange('startTimeTo', date)}
+                                    placeholder="Pick end date & time"
                                 />
                             </div>
                         </div>
