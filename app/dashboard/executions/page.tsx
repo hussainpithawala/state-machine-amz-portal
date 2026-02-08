@@ -283,6 +283,7 @@ export default function ExecutionsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead>State-Machine-Name</TableHead>
                                             <TableHead>Execution ID</TableHead>
                                             <TableHead>Execution Name</TableHead>
                                             <TableHead>Status</TableHead>
@@ -296,6 +297,14 @@ export default function ExecutionsPage() {
                                         {executions.map((execution) => (
                                             <TableRow key={`${execution.executionId}-${execution.startTime}`}
                                                       className="hover:bg-gray-50">
+                                                <TableCell className="font-medium max-w-xs truncate">
+                                                    <Link
+                                                        href={`/dashboard/state-machines/${encodeURIComponent(execution.stateMachineId)}`}
+                                                        className="text-blue-600 hover:underline hover:text-blue-800"
+                                                    >
+                                                        {execution.stateMachineId}
+                                                    </Link>
+                                                </TableCell>
                                                 <TableCell className="font-medium max-w-xs truncate">
                                                     <Link
                                                         href={`/dashboard/executions/${encodeURIComponent(execution.executionId)}`}
