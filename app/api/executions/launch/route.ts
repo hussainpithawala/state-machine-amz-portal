@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Validation schema for execution launch
+// Custom validation function for input vs sourceExecutionId
 const launchExecutionSchema = z.object({
     stateMachineId: z.string().min(1, 'State Machine ID is required'),
     name: z.string().min(1, 'Execution name is required'),
-    input: z.record(z.any()), // Accept any valid JSON object
-});
+    input: z.record(z.any()).optional(), // Now optional
+    sourceExecutionId: z.string().optional(), // Optional
+    sourceStateName: z.string().optional(), // Optional
+}).refine(
+    (data) => {
+        // Either input OR sourceExecutionId must be provided (or both)
+        return data.input !== undefined || data.sourceExecutionId !== undefined;
+    },
+    {
+        message: "Either 'input' or 'sourceExecutionId' must be provided",
+        path: ['input', 'sourceExecutionId'],
+    }
+);
 
 export async function POST(request: NextRequest) {
     try {
@@ -25,7 +36,11 @@ export async function POST(request: NextRequest) {
                 },
                 body: JSON.stringify({
                     name: validated.name,
-                    input: validated.input,
+                    // Include input only if provided
+                    ...(validated.input !== undefined && { input: validated.input }),
+                    // Include source fields only if provided
+                    ...(validated.sourceExecutionId && { sourceExecutionId: validated.sourceExecutionId }),
+                    ...(validated.sourceStateName && { sourceStateName: validated.sourceStateName }),
                 }),
                 signal: AbortSignal.timeout(10000), // 10 second timeout
             }

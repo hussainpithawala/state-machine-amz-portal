@@ -13,7 +13,7 @@ import {
     DialogTitle,
     DialogTrigger
 } from '@/components/ui/dialog';
-import { Loader2, Play } from 'lucide-react';
+import { Loader2, Play, Link2, GitBranch } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface StartExecutionModalProps {
@@ -39,10 +39,13 @@ export function StartExecutionModal({
                 "total": 150
             }
         }, null, 2),
+        sourceExecutionId: '',
+        sourceStateName: '',
     });
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -62,13 +65,24 @@ export function StartExecutionModal({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!validateInput(formData.input)) {
-            setError('Invalid JSON in execution input');
+        // Validate execution name
+        if (!formData.name.trim()) {
+            setError('Execution name is required');
             return;
         }
 
-        if (!formData.name.trim()) {
-            setError('Execution name is required');
+        // Validate that either input OR sourceExecutionId is provided
+        const hasInput = formData.input.trim() !== '';
+        const hasSourceExecutionId = formData.sourceExecutionId.trim() !== '';
+
+        if (!hasInput && !hasSourceExecutionId) {
+            setError('Either Execution Input OR Source Execution ID must be provided');
+            return;
+        }
+
+        // Validate JSON if input is provided
+        if (hasInput && !validateInput(formData.input)) {
+            setError('Invalid JSON in execution input');
             return;
         }
 
@@ -76,16 +90,31 @@ export function StartExecutionModal({
         setError(null);
 
         try {
+            const requestBody: any = {
+                stateMachineId: stateMachineId,
+                name: formData.name.trim(),
+            };
+
+            // Add input if provided
+            if (hasInput) {
+                requestBody.input = JSON.parse(formData.input);
+            }
+
+            // Add source fields if provided
+            if (hasSourceExecutionId) {
+                requestBody.sourceExecutionId = formData.sourceExecutionId.trim();
+            }
+
+            if (formData.sourceStateName.trim()) {
+                requestBody.sourceStateName = formData.sourceStateName.trim();
+            }
+
             const response = await fetch('/api/executions/launch', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    stateMachineId: stateMachineId,
-                    name: formData.name.trim(),
-                    input: JSON.parse(formData.input),
-                }),
+                body: JSON.stringify(requestBody),
             });
 
             if (!response.ok) {
@@ -116,7 +145,10 @@ export function StartExecutionModal({
                         "total": 150
                     }
                 }, null, 2),
+                sourceExecutionId: '',
+                sourceStateName: '',
             });
+            setShowAdvancedOptions(false);
 
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to launch execution';
@@ -160,21 +192,76 @@ export function StartExecutionModal({
                     </div>
 
                     <div className="space-y-2">
-                        <label htmlFor="input" className="text-sm font-medium">Execution Input (JSON)</label>
+                        <label htmlFor="input" className="text-sm font-medium">
+                            Execution Input (JSON) - <em>Required if not using Source Execution</em>
+                        </label>
                         <Textarea
                             id="input"
                             name="input"
                             value={formData.input}
                             onChange={handleChange}
-                            placeholder="Enter valid JSON input data"
+                            placeholder="Enter valid JSON input data (leave empty if using Source Execution)"
                             className="font-mono text-sm h-64"
                             disabled={loading}
-                            required
                         />
                         <p className="text-xs text-gray-500">
-                            Must be valid JSON that matches your state machine's expected input format
+                            Provide input data as JSON, OR leave empty and use Source Execution below
                         </p>
                     </div>
+
+                    {/* Advanced Options Toggle */}
+                    <div className="pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                            className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                        >
+                            {showAdvancedOptions ? 'Hide Advanced Options' : 'Show Advanced Options'}
+                            <GitBranch className="h-3 w-3 ml-1" />
+                        </button>
+                    </div>
+
+                    {/* Advanced Options */}
+                    {showAdvancedOptions && (
+                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                            <h3 className="text-sm font-medium text-gray-700 flex items-center">
+                                <Link2 className="h-4 w-4 mr-2" />
+                                Resume from Another Execution (Optional)
+                            </h3>
+                            <p className="text-xs text-gray-500 mb-4">
+                                Provide a Source Execution ID to resume execution from another workflow.
+                                Source State Name is optional.
+                            </p>
+
+                            <div className="space-y-2">
+                                <label htmlFor="sourceExecutionId" className="text-sm font-medium">
+                                    Source Execution ID - <em>Required if not providing Input</em>
+                                </label>
+                                <Input
+                                    id="sourceExecutionId"
+                                    name="sourceExecutionId"
+                                    value={formData.sourceExecutionId}
+                                    onChange={handleChange}
+                                    placeholder="state-machine-A-exec-123456789"
+                                    disabled={loading}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="sourceStateName" className="text-sm font-medium">
+                                    Source State Name (Optional)
+                                </label>
+                                <Input
+                                    id="sourceStateName"
+                                    name="sourceStateName"
+                                    value={formData.sourceStateName}
+                                    onChange={handleChange}
+                                    placeholder="IngestData"
+                                    disabled={loading}
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     {error && (
                         <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
