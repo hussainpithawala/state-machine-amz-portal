@@ -32,8 +32,8 @@ import {
     TableHeader,
     TableRow
 } from '@/components/ui/table';
-import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {StartExecutionModal} from '@/components/modals/start-execution-modal';
+import {StartBatchExecutionModal} from '@/components/modals/start-batch-execution-modal';
 
 interface StateMachineDetail {
     stateMachine: StateMachine;
@@ -231,22 +231,28 @@ export default function StateMachineDetailPage() {
                         Back
                     </Button>
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                        <h1 className="text-l font-bold text-gray-900 flex items-center">
                             <GitBranch className="h-8 w-8 mr-3 text-blue-500"/>
                             {stateMachine.name}
                         </h1>
-                        <p className="text-gray-500 mt-1 flex items-center">
+                        <p className="text-l font-bold text-gray-500 mt-1 flex items-center">
                             <FileJson className="h-4 w-4 mr-2"/>
                             {stateMachine.id}
                         </p>
                     </div>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex flex-wrap gap-2">
                     <StartExecutionModal
                         stateMachineId={stateMachine.id}
                         stateMachineName={stateMachine.name}
                         onSuccess={() => {
-                            // Refresh the page or refetch data after successful execution
+                            fetchStateMachineDetail();
+                        }}
+                    />
+                    <StartBatchExecutionModal
+                        stateMachineId={stateMachine.id}
+                        stateMachineName={stateMachine.name}
+                        onSuccess={() => {
                             fetchStateMachineDetail();
                         }}
                     />
