@@ -11,11 +11,13 @@
   },
   "scripts": {
     "dev": "next dev",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "db:push": "drizzle-kit push:pg",
-    "db:studio": "drizzle-kit studio"
+    "docker:build": "docker build -t state-machine-amz-portal:latest .",
+    "docker:run": "docker run -p 3000:3000 --env-file .env state-machine-amz-portal:latest",
+    "docker:build-arm64": "docker buildx build --platform linux/arm64 -t state-machine-amz-portal:arm64 ."
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

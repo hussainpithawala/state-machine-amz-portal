@@ -1,11 +1,16 @@
 # State Machine AMZ Portal
 
-Web portal for monitoring and managing AWS Step Functions compatible state machines implemented in Go.
+Web portal for monitoring and managing state-machines-amz-* implementations.
+
+1. This web-portal powers the views directly from the database.
+2. The commands are executed over REST via the `state-machine-amz-*` implementations.
+3. At present, only [`state-machine-amz-gin`](https://github.com/hussainpithawala/state-machine-amz-gin) provides the necessary endpoints to run this portal. 
+4. Future implementations will be provided for other frameworks.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
-![React](https://img.shields.io/badge/React-18-black?logo=react)
+![React](https://img.shields.io/badge/React-19-black?logo=react)
 
 ## 📖 Overview
 
@@ -43,3 +48,6 @@ This portal provides a comprehensive UI for monitoring state machine executions,
 ```bash
 git clone https://github.com/hussainpithawala/state-machine-amz-portal.git
 cd state-machine-amz-portal
+npm install
+npm run dev
+```

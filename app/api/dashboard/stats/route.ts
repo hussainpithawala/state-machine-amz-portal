@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { stateMachines, executions } from '@/lib/schema';
-import { count, eq } from 'drizzle-orm';
+import {count, desc, eq, gte, sql} from 'drizzle-orm';
 
 export async function GET() {
     try {
@@ -10,11 +10,11 @@ export async function GET() {
         const [totalStateMachinesResult] = await db.select({ count: count() }).from(stateMachines);
 
         // Get recent failures (limit to avoid issues)
-        let recentFailures = [];
+        let recentFailures: { name: string; metadata: unknown; createdAt: Date; updatedAt: Date; executionId: string; stateMachineId: string; input: unknown; output: unknown; status: "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED" | "TIMED_OUT" | "ABORTED" | "PAUSED"; startTime: Date; endTime: Date | null; currentState: string; error: string | null; }[] = [];
         try {
             recentFailures = await db.query.executions.findMany({
                 where: eq(executions.status, 'FAILED'),
-                orderBy: [{ column: executions.startTime, direction: 'desc' }],
+                orderBy: [desc(executions.startTime)], // ✅ Correct syntax
                 limit: 5,
             });
         } catch (error) {
@@ -23,18 +23,18 @@ export async function GET() {
         }
 
         // Get status counts (simplified)
-        let statusCounts = [];
+        let statusCounts: { status: "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED" | "TIMED_OUT" | "ABORTED" | "PAUSED"; count: number; }[] = [];
         try {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-            statusCounts = await db
+            const statusCounts = await db
                 .select({
                     status: executions.status,
-                    count: count().as('count')
+                    count: sql<number>`count(*)::int`.mapWith(Number),
                 })
                 .from(executions)
-                .where((executions) => executions.startTime >= thirtyDaysAgo)
+                .where(gte(executions.startTime, thirtyDaysAgo)) // ✅ Correct syntax
                 .groupBy(executions.status);
         } catch (error) {
             console.warn('Failed to fetch status counts:', error);

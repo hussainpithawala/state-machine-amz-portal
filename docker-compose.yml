@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  state-machine-amz-portal:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - STATE_MACHINE_SERVICE_URL=http://host.docker.internal:9090
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/statemachine_gin
+    restart: unless-stopped
+volumes:
+  postgres_data:

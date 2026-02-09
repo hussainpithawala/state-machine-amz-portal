@@ -15,12 +15,14 @@ import {
 import {z} from 'zod';
 import {subDays, startOfDay, endOfDay} from 'date-fns';
 
+type ExecutionStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'TIMED_OUT' | 'ABORTED' | 'PAUSED';
+
 // Validation schema
 const executionsQuerySchema = z.object({
     page: z.string().optional().default('1'),
     pageSize: z.string().optional().default('25'),
     stateMachineId: z.string().optional(),
-    status: z.string().optional(),
+    status: z.enum(['RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'TIMED_OUT', 'ABORTED', 'PAUSED']).optional(),
     search: z.string().optional(),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
@@ -111,7 +113,7 @@ export async function GET(request: NextRequest) {
         }
 
         if (validated.status) {
-            whereConditions.push(eq(executions.status, validated.status));
+            whereConditions.push(eq(executions.status, validated.status)); // Now types match
         }
 
         if (validated.search) {

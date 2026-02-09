@@ -5,7 +5,11 @@ import { stateMachines, executions } from './schema';
 import { count, eq, sql, desc, and, gte, isNotNull } from 'drizzle-orm';
 import { subDays, startOfDay } from 'date-fns';
 
-// Get execution statistics for dashboard
+interface DurationStats {
+    avg_duration: number | null;
+    max_duration: number | null;
+    min_duration: number | null;
+}
 
 // Get execution statistics for dashboard
 export async function getExecutionStats() {
@@ -48,7 +52,7 @@ export async function getExecutionStats() {
         // Handle undefined/empty results
         const completedExecutions = Array.isArray(completedExecutionsQuery) ? completedExecutionsQuery : [];
 
-        let durationStats = { avg_duration: null, max_duration: null, min_duration: null };
+        let durationStats:DurationStats = { avg_duration: null, max_duration: null, min_duration: null };
 
         if (completedExecutions.length > 0) {
             const durations = completedExecutions
@@ -70,7 +74,7 @@ export async function getExecutionStats() {
         // Get recent failures
         const recentFailuresQuery = await db.query.executions.findMany({
             where: eq(executions.status, 'FAILED'),
-            orderBy: [{ column: executions.startTime, direction: 'desc' }],
+            orderBy: [desc(executions.startTime)],
             limit: 10,
         });
 
