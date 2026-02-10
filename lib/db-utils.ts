@@ -52,7 +52,7 @@ export async function getExecutionStats() {
         // Handle undefined/empty results
         const completedExecutions = Array.isArray(completedExecutionsQuery) ? completedExecutionsQuery : [];
 
-        let durationStats:DurationStats = { avg_duration: null, max_duration: null, min_duration: null };
+        const durationStats:DurationStats = { avg_duration: null, max_duration: null, min_duration: null };
 
         if (completedExecutions.length > 0) {
             const durations = completedExecutions

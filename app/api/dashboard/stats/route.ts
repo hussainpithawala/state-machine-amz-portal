@@ -36,6 +36,7 @@ export async function GET() {
                 .from(executions)
                 .where(gte(executions.startTime, thirtyDaysAgo)) // ✅ Correct syntax
                 .groupBy(executions.status);
+            console.log('statusCounts:', statusCounts);
         } catch (error) {
             console.warn('Failed to fetch status counts:', error);
             statusCounts = [];

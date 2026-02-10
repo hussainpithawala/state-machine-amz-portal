@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import {NextResponse} from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         const serviceUrl = process.env.STATE_MACHINE_SERVICE_URL || 'http://localhost:9090';
 
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
                 statusCode: response.status,
                 message: `Service returned ${response.status} ${response.statusText}`,
                 timestamp: new Date().toISOString(),
-            }, { status: 200 });
+            }, {status: 200});
         }
 
         const healthData = await response.json();
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
             statusCode: response.status,
             data: healthData,
             timestamp: new Date().toISOString(),
-        }, { status: 200 });
+        }, {status: 200});
 
     } catch (error) {
         console.error('Error fetching service health:', error);
@@ -44,6 +44,6 @@ export async function GET(request: NextRequest) {
             statusCode: null,
             message: message,
             timestamp: new Date().toISOString(),
-        }, { status: 200 });
+        }, {status: 200});
     }
 }

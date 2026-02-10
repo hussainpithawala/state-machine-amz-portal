@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         const offset = (page - 1) * pageSize;
 
         // Build WHERE conditions
-        let whereConditions: any[] = [];
+        const whereConditions: any[] = [];
         if (validated.search) {
             whereConditions.push(like(stateMachines.name, `%${validated.search}%`));
         }

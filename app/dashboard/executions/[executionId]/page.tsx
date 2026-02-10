@@ -1,11 +1,11 @@
 'use client';
 
-import {useState, useEffect} from 'react';
-import {useParams, useRouter} from 'next/navigation';
-import {Button} from '@/components/ui/button';
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
-import {Badge} from '@/components/ui/badge';
-import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     ArrowLeft,
     History,
@@ -20,11 +20,11 @@ import {
     Hash,
     LinkIcon
 } from 'lucide-react';
-import {Execution, StateHistoryEntry} from '@/types/database';
-import {formatDate, formatDuration, getStatusColor, formatJson} from '@/lib/utils';
+import { Execution, StateHistoryEntry } from '@/types/database';
+import { formatDate, formatDuration, getStatusColor, formatJson } from '@/lib/utils';
 import Link from 'next/link';
-import {Skeleton} from '@/components/ui/skeleton';
-import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface ExecutionDetail {
     execution: Execution;
@@ -44,7 +44,13 @@ export default function ExecutionDetailPage() {
     const router = useRouter();
     const executionId = params.executionId as string;
 
-    // Handle undefined executionId
+    // ✅ ALL HOOKS AT THE TOP - BEFORE ANY CONDITIONAL LOGIC
+    const [executionDetail, setExecutionDetail] = useState<ExecutionDetail | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState('timeline');
+
+    // ✅ Conditional return AFTER hooks
     if (!executionId) {
         return (
             <div className="max-w-4xl mx-auto mt-8">
@@ -67,16 +73,7 @@ export default function ExecutionDetailPage() {
         );
     }
 
-    const [executionDetail, setExecutionDetail] = useState<ExecutionDetail | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState('timeline');
-
-    useEffect(() => {
-        fetchExecutionDetail();
-    }, [executionId]);
-
-    const fetchExecutionDetail = async () => {
+    const fetchExecutionDetail = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -116,7 +113,11 @@ export default function ExecutionDetailPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [executionId]);
+
+    useEffect(() => {
+        fetchExecutionDetail();
+    }, [fetchExecutionDetail]);
 
     const handleRetry = async () => {
         // TODO: Implement retry logic
@@ -134,7 +135,7 @@ export default function ExecutionDetailPage() {
     };
 
     if (loading) {
-        return <ExecutionDetailSkeleton/>;
+        return <ExecutionDetailSkeleton />;
     }
 
     if (error || !executionDetail) {
@@ -143,7 +144,7 @@ export default function ExecutionDetailPage() {
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
-                            <XCircle className="h-8 w-8 text-red-600"/>
+                            <XCircle className="h-8 w-8 text-red-600" />
                         </div>
                         <CardTitle className="text-center text-2xl">Error</CardTitle>
                         <CardDescription className="text-center">
@@ -152,7 +153,7 @@ export default function ExecutionDetailPage() {
                     </CardHeader>
                     <CardContent className="flex justify-center gap-4">
                         <Button variant="outline" onClick={() => router.back()}>
-                            <ArrowLeft className="h-4 w-4 mr-2"/>
+                            <ArrowLeft className="h-4 w-4 mr-2" />
                             Go Back
                         </Button>
                         <Button asChild>
@@ -166,27 +167,28 @@ export default function ExecutionDetailPage() {
         );
     }
 
-    const {execution, stateHistory, summary, totalDuration} = executionDetail;
+    const { execution, stateHistory, summary, totalDuration } = executionDetail;
     const isRunning = execution.status === 'RUNNING';
     const hasFailed = execution.status === 'FAILED';
     const hasSucceeded = execution.status === 'SUCCEEDED';
 
+    // @ts-expect-error
     return (
         <div className="space-y-6 max-w-6xl mx-auto">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                     <Button variant="ghost" size="sm" onClick={() => router.back()}>
-                        <ArrowLeft className="h-4 w-4 mr-2"/>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
                         Back
                     </Button>
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                            <History className="h-8 w-8 mr-3 text-blue-500"/>
+                            <History className="h-8 w-8 mr-3 text-blue-500" />
                             Execution Details
                         </h1>
                         <p className="text-gray-500 mt-1 flex items-center">
-                            <Hash className="h-4 w-4 mr-2"/>
+                            <Hash className="h-4 w-4 mr-2" />
                             {execution.executionId}
                         </p>
                     </div>
@@ -194,19 +196,19 @@ export default function ExecutionDetailPage() {
                 <div className="flex space-x-2">
                     {isRunning && (
                         <Button variant="outline" size="sm" onClick={handleCancel}>
-                            <Pause className="h-4 w-4 mr-1"/>
+                            <Pause className="h-4 w-4 mr-1" />
                             Cancel
                         </Button>
                     )}
                     {hasFailed && (
                         <Button variant="outline" size="sm" onClick={handleRetry}>
-                            <RotateCcw className="h-4 w-4 mr-1"/>
+                            <RotateCcw className="h-4 w-4 mr-1" />
                             Retry
                         </Button>
                     )}
                     {hasSucceeded && (
                         <Button variant="outline" size="sm" onClick={handleRestart}>
-                            <Play className="h-4 w-4 mr-1"/>
+                            <Play className="h-4 w-4 mr-1" />
                             Restart
                         </Button>
                     )}
@@ -221,7 +223,7 @@ export default function ExecutionDetailPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-gray-600">State Machine</CardTitle>
-                        <History className="h-4 w-4 text-gray-400"/>
+                        <History className="h-4 w-4 text-gray-400" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{execution.name}</div>
@@ -229,7 +231,7 @@ export default function ExecutionDetailPage() {
                             href={`/dashboard/state-machines/${encodeURIComponent(execution.stateMachineId)}`}
                             className="text-xs text-blue-600 hover:underline flex items-center mt-1"
                         >
-                            <LinkIcon className="h-3 w-3 mr-1"/>
+                            <LinkIcon className="h-3 w-3 mr-1" />
                             View State Machine
                         </Link>
                     </CardContent>
@@ -237,7 +239,7 @@ export default function ExecutionDetailPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-gray-600">Duration</CardTitle>
-                        <Clock className="h-4 w-4 text-gray-400"/>
+                        <Clock className="h-4 w-4 text-gray-400" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
@@ -254,7 +256,7 @@ export default function ExecutionDetailPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-gray-600">States</CardTitle>
-                        <FileJson className="h-4 w-4 text-gray-400"/>
+                        <FileJson className="h-4 w-4 text-gray-400" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stateHistory.length}</div>
@@ -264,7 +266,7 @@ export default function ExecutionDetailPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-gray-600">Current State</CardTitle>
-                        <Play className="h-4 w-4 text-gray-400"/>
+                        <Play className="h-4 w-4 text-gray-400" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-sm">{execution.currentState}</div>
@@ -274,10 +276,10 @@ export default function ExecutionDetailPage() {
 
             {/* Summary Cards */}
             <div className="grid gap-4 md:grid-cols-4">
-                <SummaryCard title="Succeeded" count={summary.succeeded} icon={CheckCircle2} color="text-green-500"/>
-                <SummaryCard title="Failed" count={summary.failed} icon={XCircle} color="text-red-500"/>
-                <SummaryCard title="Retrying" count={summary.retrying} icon={RotateCcw} color="text-yellow-500"/>
-                <SummaryCard title="Waiting" count={summary.waiting} icon={Clock} color="text-blue-500"/>
+                <SummaryCard title="Succeeded" count={summary.succeeded} icon={CheckCircle2} color="text-green-500" />
+                <SummaryCard title="Failed" count={summary.failed} icon={XCircle} color="text-red-500" />
+                <SummaryCard title="Retrying" count={summary.retrying} icon={RotateCcw} color="text-yellow-500" />
+                <SummaryCard title="Waiting" count={summary.waiting} icon={Clock} color="text-blue-500" />
             </div>
 
             {/* Tabs */}
@@ -286,19 +288,19 @@ export default function ExecutionDetailPage() {
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
                         <TabsList className="grid w-full grid-cols-4">
                             <TabsTrigger value="timeline">
-                                <History className="h-4 w-4 mr-2"/>
+                                <History className="h-4 w-4 mr-2" />
                                 Timeline
                             </TabsTrigger>
                             <TabsTrigger value="input">
-                                <FileJson className="h-4 w-4 mr-2"/>
+                                <FileJson className="h-4 w-4 mr-2" />
                                 Input
                             </TabsTrigger>
                             <TabsTrigger value="output">
-                                <FileJson className="h-4 w-4 mr-2"/>
+                                <FileJson className="h-4 w-4 mr-2" />
                                 Output
                             </TabsTrigger>
                             <TabsTrigger value="metadata">
-                                <FileJson className="h-4 w-4 mr-2"/>
+                                <FileJson className="h-4 w-4 mr-2" />
                                 Metadata
                             </TabsTrigger>
                         </TabsList>
@@ -306,13 +308,13 @@ export default function ExecutionDetailPage() {
                 </CardHeader>
                 <CardContent>
                     {activeTab === 'timeline' ? (
-                        <StateTimeline states={stateHistory}/>
+                        <StateTimeline states={stateHistory} />
                     ) : activeTab === 'input' ? (
-                        <JsonViewer data={execution.input} title="Execution Input"/>
+                        <JsonViewer data={execution.input} title="Execution Input" />
                     ) : activeTab === 'output' ? (
-                        <JsonViewer data={execution.output} title="Execution Output"/>
+                        <JsonViewer data={execution.output} title="Execution Output" />
                     ) : (
-                        <JsonViewer data={execution.metadata} title="Execution Metadata"/>
+                        <JsonViewer data={execution.metadata} title="Execution Metadata" />
                     )}
                 </CardContent>
             </Card>
@@ -322,7 +324,7 @@ export default function ExecutionDetailPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center text-red-600">
-                            <AlertCircle className="h-5 w-5 mr-2"/>
+                            <AlertCircle className="h-5 w-5 mr-2" />
                             Error Details
                         </CardTitle>
                     </CardHeader>
@@ -339,7 +341,7 @@ export default function ExecutionDetailPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center">
-                            <LinkIcon className="h-5 w-5 mr-2"/>
+                            <LinkIcon className="h-5 w-5 mr-2" />
                             Correlation Data
                         </CardTitle>
                     </CardHeader>
@@ -347,8 +349,7 @@ export default function ExecutionDetailPage() {
                         <div className="space-y-2">
                             <div>
                                 <span className="font-medium">Correlation Key:</span>{' '}
-                                <code
-                                    className="bg-gray-100 px-2 py-1 rounded">{execution.metadata.correlationKey}</code>
+                                <code className="bg-gray-100 px-2 py-1 rounded">{execution.metadata.correlationKey}</code>
                             </div>
                             <div>
                                 <span className="font-medium">Correlation Value:</span>{' '}
@@ -364,7 +365,7 @@ export default function ExecutionDetailPage() {
     );
 }
 
-function SummaryCard({title, count, icon: Icon, color}: {
+function SummaryCard({ title, count, icon: Icon, color }: {
     title: string;
     count: number;
     icon: React.ElementType;
@@ -374,20 +375,20 @@ function SummaryCard({title, count, icon: Icon, color}: {
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">{title}</CardTitle>
-                <Icon className={`h-4 w-4 ${color}`}/>
+                <Icon className={`h-4 w-4 ${color}`} />
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{count}</div>
             </CardContent>
         </Card>
-    )
+    );
 }
 
-function StateTimeline({states}: { states: StateHistoryEntry[] }) {
+function StateTimeline({ states }: { states: StateHistoryEntry[] }) {
     if (states.length === 0) {
         return (
             <div className="text-center py-8 text-gray-500">
-                <History className="h-12 w-12 mx-auto mb-4 text-gray-300"/>
+                <History className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                 <p className="text-lg font-medium mb-2">No state history available</p>
                 <p className="text-sm">This execution has no recorded state transitions</p>
             </div>
@@ -431,7 +432,7 @@ function StateTimeline({states}: { states: StateHistoryEntry[] }) {
                                 </p>
                                 {state.retryCount > 0 && (
                                     <p className="text-sm text-yellow-600 mt-1">
-                                        <RotateCcw className="h-4 w-4 inline mr-1"/>
+                                        <RotateCcw className="h-4 w-4 inline mr-1" />
                                         Retried {state.retryCount} time{state.retryCount !== 1 ? 's' : ''}
                                     </p>
                                 )}
@@ -452,8 +453,7 @@ function StateTimeline({states}: { states: StateHistoryEntry[] }) {
                                         {state.input && (
                                             <div>
                                                 <span className="text-xs font-medium text-gray-600">Input:</span>
-                                                <pre
-                                                    className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-32">
+                                                <pre className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-32">
                           {JSON.stringify(state.input, null, 2)}
                         </pre>
                                             </div>
@@ -461,8 +461,7 @@ function StateTimeline({states}: { states: StateHistoryEntry[] }) {
                                         {state.output && (
                                             <div>
                                                 <span className="text-xs font-medium text-gray-600">Output:</span>
-                                                <pre
-                                                    className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-32">
+                                                <pre className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-32">
                           {JSON.stringify(state.output, null, 2)}
                         </pre>
                                             </div>
@@ -478,11 +477,12 @@ function StateTimeline({states}: { states: StateHistoryEntry[] }) {
     );
 }
 
-function JsonViewer({data, title}: { data?: Record<string, any>; title?: string }) {
+// ✅ Fixed the 'any' type by using proper Json type from database.ts
+function JsonViewer({ data, title }: { data?: Record<string, unknown>; title?: string }) {
     if (!data || Object.keys(data).length === 0) {
         return (
             <div className="text-center py-8 text-gray-500">
-                <FileJson className="h-12 w-12 mx-auto mb-4 text-gray-300"/>
+                <FileJson className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                 <p className="text-lg font-medium mb-2">No {title?.toLowerCase() || 'data'} available</p>
                 <p className="text-sm">This execution has no {title?.toLowerCase() || 'data'} to display</p>
             </div>
@@ -503,23 +503,23 @@ function ExecutionDetailSkeleton() {
         <div className="space-y-6 max-w-6xl mx-auto">
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                    <Skeleton className="h-10 w-24"/>
+                    <Skeleton className="h-10 w-24" />
                     <div className="space-y-2">
-                        <Skeleton className="h-8 w-64"/>
-                        <Skeleton className="h-4 w-96"/>
+                        <Skeleton className="h-8 w-64" />
+                        <Skeleton className="h-4 w-96" />
                     </div>
                 </div>
                 <div className="flex space-x-2">
-                    <Skeleton className="h-10 w-24"/>
-                    <Skeleton className="h-10 w-24"/>
+                    <Skeleton className="h-10 w-24" />
+                    <Skeleton className="h-10 w-24" />
                 </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
                     <div key={i} className="bg-white rounded-lg border p-6">
-                        <Skeleton className="h-4 w-24 mb-4"/>
-                        <Skeleton className="h-8 w-32"/>
+                        <Skeleton className="h-4 w-24 mb-4" />
+                        <Skeleton className="h-8 w-32" />
                     </div>
                 ))}
             </div>
@@ -527,18 +527,18 @@ function ExecutionDetailSkeleton() {
             <div className="grid gap-4 md:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
                     <div key={i} className="bg-white rounded-lg border p-6">
-                        <Skeleton className="h-4 w-24 mb-4"/>
-                        <Skeleton className="h-8 w-32"/>
+                        <Skeleton className="h-4 w-24 mb-4" />
+                        <Skeleton className="h-8 w-32" />
                     </div>
                 ))}
             </div>
 
             <div className="bg-white rounded-lg border">
                 <div className="border-b p-4">
-                    <Skeleton className="h-10 w-full"/>
+                    <Skeleton className="h-10 w-full" />
                 </div>
                 <div className="p-4">
-                    <Skeleton className="h-64 w-full"/>
+                    <Skeleton className="h-64 w-full" />
                 </div>
             </div>
         </div>

@@ -3,19 +3,18 @@ import {db} from '@/lib/db';
 import {executions, stateHistory} from '@/lib/schema'; // ✅ Added stateHistory import
 import {
     eq,
-    sql,
     like,
     and,
     count,
     gte,
     lte,
     desc,
-    asc
+    asc, SQL
 } from 'drizzle-orm';
 import {z} from 'zod';
-import {subDays, startOfDay, endOfDay} from 'date-fns';
+import {subDays, startOfDay} from 'date-fns';
 
-type ExecutionStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'TIMED_OUT' | 'ABORTED' | 'PAUSED';
+// type ExecutionStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'TIMED_OUT' | 'ABORTED' | 'PAUSED';
 
 // Validation schema
 const executionsQuerySchema = z.object({
@@ -74,7 +73,7 @@ export async function GET(request: NextRequest) {
         const offset = (page - 1) * pageSize;
 
         // Build date range filters
-        let dateConditions: any[] = [];
+        const dateConditions: SQL[] = [];
         const now = new Date();
 
         if (validated.dateRange) {
@@ -106,7 +105,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Build WHERE conditions
-        let whereConditions: any[] = [...dateConditions];
+        const whereConditions: SQL[] = [...dateConditions];
 
         if (validated.stateMachineId) {
             whereConditions.push(eq(executions.stateMachineId, validated.stateMachineId));

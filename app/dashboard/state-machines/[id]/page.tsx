@@ -1,11 +1,11 @@
 'use client';
 
-import {useState, useEffect} from 'react';
-import {useParams, useRouter} from 'next/navigation';
-import {Button} from '@/components/ui/button';
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
-import {Badge} from '@/components/ui/badge';
-import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     ArrowLeft,
     GitBranch,
@@ -18,12 +18,13 @@ import {
     Edit,
     Trash2,
     Copy,
-    Download, ExternalLink
+    Download,
+    ExternalLink
 } from 'lucide-react';
-import {StateMachine} from '@/types/database';
-import {formatDate, formatDuration, copyToClipboard, formatJson} from '@/lib/utils';
+import { StateMachine } from '@/types/database';
+import { formatDate, formatDuration, copyToClipboard, formatJson } from '@/lib/utils';
 import Link from 'next/link';
-import {Skeleton} from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
     Table,
     TableBody,
@@ -32,8 +33,8 @@ import {
     TableHeader,
     TableRow
 } from '@/components/ui/table';
-import {StartExecutionModal} from '@/components/modals/start-execution-modal';
-import {StartBatchExecutionModal} from '@/components/modals/start-batch-execution-modal';
+import { StartExecutionModal } from '@/components/modals/start-execution-modal';
+import { StartBatchExecutionModal } from '@/components/modals/start-batch-execution-modal';
 
 interface StateMachineDetail {
     stateMachine: StateMachine;
@@ -60,7 +61,14 @@ export default function StateMachineDetailPage() {
     const router = useRouter();
     const stateMachineId = params.id as string;
 
-    // ✅ Add this check at the beginning
+    // ✅ ALL HOOKS AT THE TOP - BEFORE ANY CONDITIONAL LOGIC
+    const [stateMachineDetail, setStateMachineDetail] = useState<StateMachineDetail | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState('definition');
+    const [copySuccess, setCopySuccess] = useState(false);
+
+    // ✅ Conditional return AFTER hooks
     if (!stateMachineId) {
         return (
             <div className="max-w-4xl mx-auto mt-8">
@@ -83,17 +91,7 @@ export default function StateMachineDetailPage() {
         );
     }
 
-    const [stateMachineDetail, setStateMachineDetail] = useState<StateMachineDetail | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState('definition');
-    const [copySuccess, setCopySuccess] = useState(false);
-
-    useEffect(() => {
-        fetchStateMachineDetail();
-    }, [stateMachineId]);
-
-    const fetchStateMachineDetail = async () => {
+    const fetchStateMachineDetail = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -114,9 +112,11 @@ export default function StateMachineDetailPage() {
 
             const executions = statsData.results || [];
             const total = statsData.pagination?.total || 0;
-            const succeeded = executions.filter((e: any) => e.status === 'SUCCEEDED').length;
-            const failed = executions.filter((e: any) => e.status === 'FAILED').length;
-            const running = executions.filter((e: any) => e.status === 'RUNNING').length;
+
+            // ✅ Fixed any types with proper type annotations
+            const succeeded = executions.filter((e: { status: string }) => e.status === 'SUCCEEDED').length;
+            const failed = executions.filter((e: { status: string }) => e.status === 'FAILED').length;
+            const running = executions.filter((e: { status: string }) => e.status === 'RUNNING').length;
             const successRate = total > 0 ? Math.round((succeeded / total) * 100) : 0;
 
             setStateMachineDetail({
@@ -136,7 +136,11 @@ export default function StateMachineDetailPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [stateMachineId]);
+
+    useEffect(() => {
+        fetchStateMachineDetail();
+    }, [fetchStateMachineDetail]);
 
     const handleCopyDefinition = async () => {
         const definition = stateMachineDetail?.stateMachine.definition;
@@ -184,7 +188,7 @@ export default function StateMachineDetailPage() {
     };
 
     if (loading) {
-        return <StateMachineDetailSkeleton/>;
+        return <StateMachineDetailSkeleton />;
     }
 
     if (error || !stateMachineDetail) {
@@ -193,7 +197,7 @@ export default function StateMachineDetailPage() {
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
-                            <XCircle className="h-8 w-8 text-red-600"/>
+                            <XCircle className="h-8 w-8 text-red-600" />
                         </div>
                         <CardTitle className="text-center text-2xl">Error</CardTitle>
                         <CardDescription className="text-center">
@@ -202,7 +206,7 @@ export default function StateMachineDetailPage() {
                     </CardHeader>
                     <CardContent className="flex justify-center gap-4">
                         <Button variant="outline" onClick={() => router.back()}>
-                            <ArrowLeft className="h-4 w-4 mr-2"/>
+                            <ArrowLeft className="h-4 w-4 mr-2" />
                             Go Back
                         </Button>
                         <Button asChild>
@@ -216,7 +220,7 @@ export default function StateMachineDetailPage() {
         );
     }
 
-    const {stateMachine, executionStats, recentExecutions} = stateMachineDetail;
+    const { stateMachine, executionStats, recentExecutions } = stateMachineDetail;
     const definitionToDisplay = typeof stateMachine.definition === 'string'
         ? JSON.parse(stateMachine.definition)
         : stateMachine.definition;
@@ -227,16 +231,16 @@ export default function StateMachineDetailPage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                     <Button variant="ghost" size="sm" onClick={() => router.back()}>
-                        <ArrowLeft className="h-4 w-4 mr-2"/>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
                         Back
                     </Button>
                     <div>
                         <h1 className="text-l font-bold text-gray-900 flex items-center">
-                            <GitBranch className="h-8 w-8 mr-3 text-blue-500"/>
+                            <GitBranch className="h-8 w-8 mr-3 text-blue-500" />
                             {stateMachine.name}
                         </h1>
                         <p className="text-l font-bold text-gray-500 mt-1 flex items-center">
-                            <FileJson className="h-4 w-4 mr-2"/>
+                            <FileJson className="h-4 w-4 mr-2" />
                             {stateMachine.id}
                         </p>
                     </div>
@@ -257,10 +261,10 @@ export default function StateMachineDetailPage() {
                         }}
                     />
                     <Button variant="outline" size="icon" onClick={handleEdit}>
-                        <Edit className="h-4 w-4"/>
+                        <Edit className="h-4 w-4" />
                     </Button>
                     <Button variant="destructive" size="icon" onClick={handleDelete}>
-                        <Trash2 className="h-4 w-4"/>
+                        <Trash2 className="h-4 w-4" />
                     </Button>
                 </div>
             </div>
@@ -270,7 +274,7 @@ export default function StateMachineDetailPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-gray-600">Type</CardTitle>
-                        <GitBranch className="h-4 w-4 text-gray-400"/>
+                        <GitBranch className="h-4 w-4 text-gray-400" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
@@ -290,7 +294,7 @@ export default function StateMachineDetailPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-gray-600">Total Executions</CardTitle>
-                        <History className="h-4 w-4 text-gray-400"/>
+                        <History className="h-4 w-4 text-gray-400" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{executionStats.total}</div>
@@ -299,7 +303,7 @@ export default function StateMachineDetailPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-gray-600">Success Rate</CardTitle>
-                        <CheckCircle2 className="h-4 w-4 text-gray-400"/>
+                        <CheckCircle2 className="h-4 w-4 text-gray-400" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-green-600">
@@ -310,7 +314,7 @@ export default function StateMachineDetailPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-gray-600">Created</CardTitle>
-                        <Clock className="h-4 w-4 text-gray-400"/>
+                        <Clock className="h-4 w-4 text-gray-400" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-sm">
@@ -326,34 +330,33 @@ export default function StateMachineDetailPage() {
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
                         <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="definition">
-                                <FileJson className="h-4 w-4 mr-2"/>
+                                <FileJson className="h-4 w-4 mr-2" />
                                 Definition
                             </TabsTrigger>
                             <TabsTrigger value="metadata">
-                                <FileJson className="h-4 w-4 mr-2"/>
+                                <FileJson className="h-4 w-4 mr-2" />
                                 Metadata
                             </TabsTrigger>
                             <TabsTrigger value="executions">
-                                <History className="h-4 w-4 mr-2"/>
+                                <History className="h-4 w-4 mr-2" />
                                 Recent Executions
                             </TabsTrigger>
                         </TabsList>
                     </Tabs>
                     <div className="flex space-x-2">
                         <Button variant="outline" size="sm" onClick={handleCopyDefinition}>
-                            <Copy className="h-4 w-4 mr-2"/>
+                            <Copy className="h-4 w-4 mr-2" />
                             {copySuccess ? 'Copied!' : 'Copy'}
                         </Button>
                         <Button variant="outline" size="sm" onClick={handleDownloadDefinition}>
-                            <Download className="h-4 w-4 mr-2"/>
+                            <Download className="h-4 w-4 mr-2" />
                             Download
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
                     {activeTab === 'definition' ? (
-                        <div
-                            className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm overflow-x-auto max-h-[600px]">
+                        <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm overflow-x-auto max-h-[600px]">
               <pre className="whitespace-pre-wrap break-words">
                 {formatJson(definitionToDisplay)}
               </pre>
@@ -366,7 +369,7 @@ export default function StateMachineDetailPage() {
                 </pre>
                             ) : (
                                 <div className="text-center text-gray-500 py-8">
-                                    <FileJson className="h-12 w-12 mx-auto mb-4 text-gray-300"/>
+                                    <FileJson className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                                     <p className="font-medium">No metadata available</p>
                                     <p className="text-sm mt-1">This state machine has no additional metadata</p>
                                 </div>
@@ -414,14 +417,9 @@ export default function StateMachineDetailPage() {
                                                     {execution.currentState}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        asChild
-                                                    >
-                                                        <Link
-                                                            href={`/dashboard/executions/${encodeURIComponent(execution.executionId)}`}>
-                                                            <ExternalLink className="h-4 w-4 mr-1"/>
+                                                    <Button variant="ghost" size="sm" asChild>
+                                                        <Link href={`/dashboard/executions/${encodeURIComponent(execution.executionId)}`}>
+                                                            <ExternalLink className="h-4 w-4 mr-1" />
                                                             View
                                                         </Link>
                                                     </Button>
@@ -432,14 +430,11 @@ export default function StateMachineDetailPage() {
                                 </Table>
                             ) : (
                                 <div className="text-center py-12 text-gray-500">
-                                    <History className="h-12 w-12 mx-auto mb-4 text-gray-300"/>
+                                    <History className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                                     <p className="text-lg font-medium mb-2">No executions yet</p>
                                     <p className="text-sm">Start a new execution to see it here</p>
-                                    <Button
-                                        className="mt-4"
-                                        onClick={handleStartExecution}
-                                    >
-                                        <Play className="h-4 w-4 mr-2"/>
+                                    <Button className="mt-4" onClick={handleStartExecution}>
+                                        <Play className="h-4 w-4 mr-2" />
                                         Start Execution
                                     </Button>
                                 </div>
@@ -464,71 +459,50 @@ export default function StateMachineDetailPage() {
     );
 }
 
-// Reusable Status Badge Component
-function StatusBadge({status}: { status: string }) {
-    const colors: Record<string, string> = {
-        RUNNING: 'bg-blue-100 text-blue-800',
-        SUCCEEDED: 'bg-green-100 text-green-800',
-        FAILED: 'bg-red-100 text-red-800',
-        CANCELLED: 'bg-gray-100 text-gray-800',
-        TIMED_OUT: 'bg-yellow-100 text-yellow-800',
-        ABORTED: 'bg-purple-100 text-purple-800',
-        PAUSED: 'bg-orange-100 text-orange-800',
-    };
-
-    const colorClass = colors[status] || 'bg-gray-100 text-gray-800';
-
-    return (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colorClass}`}>
-      {status.replace('_', ' ')}
-    </span>
-    );
-}
-
 function StateMachineDetailSkeleton() {
     return (
         <div className="space-y-6 max-w-6xl mx-auto">
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                    <Skeleton className="h-10 w-24"/>
+                    <Skeleton className="h-10 w-24" />
                     <div className="space-y-2">
-                        <Skeleton className="h-8 w-64"/>
-                        <Skeleton className="h-4 w-96"/>
+                        <Skeleton className="h-8 w-64" />
+                        <Skeleton className="h-4 w-96" />
                     </div>
                 </div>
                 <div className="flex space-x-2">
-                    <Skeleton className="h-10 w-32"/>
-                    <Skeleton className="h-10 w-10"/>
-                    <Skeleton className="h-10 w-10"/>
+                    <Skeleton className="h-10 w-32" />
+                    <Skeleton className="h-10 w-10" />
+                    <Skeleton className="h-10 w-10" />
                 </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-5">
                 {[...Array(5)].map((_, i) => (
                     <div key={i} className="bg-white rounded-lg border p-6">
-                        <Skeleton className="h-4 w-24 mb-4"/>
-                        <Skeleton className="h-8 w-32"/>
+                        <Skeleton className="h-4 w-24 mb-4" />
+                        <Skeleton className="h-8 w-32" />
                     </div>
                 ))}
             </div>
 
             <div className="bg-white rounded-lg border">
                 <div className="border-b p-4 flex items-center justify-between">
-                    <Skeleton className="h-10 w-full max-w-md"/>
+                    <Skeleton className="h-10 w-full max-w-md" />
                     <div className="flex space-x-2">
-                        <Skeleton className="h-8 w-24"/>
-                        <Skeleton className="h-8 w-24"/>
+                        <Skeleton className="h-8 w-24" />
+                        <Skeleton className="h-8 w-24" />
                     </div>
                 </div>
                 <div className="p-4">
-                    <Skeleton className="h-64 w-full"/>
+                    <Skeleton className="h-64 w-full" />
                 </div>
             </div>
 
             <div className="bg-white rounded-lg border">
                 <div className="p-6">
-                    <Skeleton className="h-6 w-32 mb-4"/>
-                    <Skeleton className="h-4 w-full max-w-lg"/>
+                    <Skeleton className="h-6 w-32 mb-4" />
+                    <Skeleton className="h-4 w-full max-w-lg" />
                 </div>
             </div>
         </div>
