@@ -179,7 +179,7 @@ test_docker_image() {
 
     # Test that image can start
     info "Testing Docker image startup..."
-    container_id=$(docker run -d -p 3000:3000 --env-file .env.example "$image_name")
+    container_id=$(docker run -d -p 3000:3000 --env-file .env.local "$image_name")
 
     # Wait for container to start
     sleep 5

@@ -1,6 +1,6 @@
 {
   "name": "state-machine-amz-portal",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Web portal for monitoring AWS Step Functions compatible state machines",
