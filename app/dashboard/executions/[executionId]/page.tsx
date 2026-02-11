@@ -224,7 +224,7 @@ export default function ExecutionDetailPage() {
                         <History className="h-4 w-4 text-gray-400"/>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{execution.name}</div>
+                        <div className="text-s font-bold">{execution.name}</div>
                         <Link
                             href={`/dashboard/state-machines/${encodeURIComponent(execution.stateMachineId)}`}
                             className="text-xs text-blue-600 hover:underline flex items-center mt-1"
@@ -241,7 +241,7 @@ export default function ExecutionDetailPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {totalDuration ? `${(totalDuration / 1000).toFixed(2)}s` : 'N/A'}
+                            {totalDuration ? `${(totalDuration).toFixed(2)} ms` : 'N/A'}
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
                             {execution.endTime
@@ -398,6 +398,8 @@ function StateTimeline({states}: { states: StateHistoryEntry[] }) {
         <div className="space-y-6">
             {states.map((state, index) => {
                 const isLast = index === states.length - 1;
+                console.log(state.endTime);
+                console.log(state);
                 const duration = state.endTime
                     ? formatDuration(state.startTime, state.endTime)
                     : 'Running...';
@@ -429,7 +431,7 @@ function StateTimeline({states}: { states: StateHistoryEntry[] }) {
                                     Type: <code className="bg-gray-100 px-1 py-0.5 rounded">{state.stateType}</code> •
                                     Duration: <span className="font-mono">{duration}</span>
                                 </p>
-                                {state.retryCount > 0 && (
+                                {state.retryCount >= 0 && (
                                     <p className="text-sm text-yellow-600 mt-1">
                                         <RotateCcw className="h-4 w-4 inline mr-1"/>
                                         Retried {state.retryCount} time{state.retryCount !== 1 ? 's' : ''}

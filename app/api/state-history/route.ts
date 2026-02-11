@@ -69,6 +69,10 @@ export async function GET(request: NextRequest) {
             duration: (entry as any).end_time
                 ? new Date((entry as any).end_time).getTime() - new Date((entry as any).start_time).getTime()
                 : null,
+            endTime: (entry as any).end_time,
+            startTime: (entry as any).start_time,
+            stateType: (entry as any).state_type,
+            stateName: (entry as any).state_name,
             inputPreview: (entry as any).input ? JSON.stringify((entry as any).input).substring(0, 100) : null,
             outputPreview: (entry as any).output ? JSON.stringify((entry as any).output).substring(0, 100) : null,
         }));

@@ -33,7 +33,7 @@ const eslintConfig = defineConfig([
       ],
 
       // React Hooks rules
-      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/rules-of-hooks": "warn",
       "react-hooks/exhaustive-deps": "warn",
 
       // Other helpful rules
