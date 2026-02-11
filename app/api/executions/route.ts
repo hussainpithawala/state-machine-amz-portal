@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
         const offset = (page - 1) * pageSize;
 
         // Build date range filters
-        let dateConditions: any[] = [];
+        const dateConditions: any[] = [];
         const now = new Date();
 
         if (validated.dateRange) {
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Build WHERE conditions
-        let whereConditions: any[] = [...dateConditions];
+        const whereConditions: any[] = [...dateConditions];
 
         if (validated.stateMachineId) {
             whereConditions.push(eq(executions.stateMachineId, validated.stateMachineId));
