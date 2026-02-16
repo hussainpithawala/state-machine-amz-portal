@@ -57,9 +57,11 @@ export function StartExecutionModal({
     };
 
     const handleTransformerChange = (value: string) => {
-        // Convert "none" back to empty string for API compatibility
+        // Convert "none" to empty string for API compatibility
+        // This ensures sourceInputTransformer is not sent when "None" is selected
         const actualValue = value === "none" ? "" : value;
-        setFormData(prev => ({ ...prev, sourceInputTransformer: value }));
+        setFormData(prev => ({ ...prev, sourceInputTransformer: actualValue }));
+        setError(null);
     };
 
     const validateInput = (input: string): boolean => {

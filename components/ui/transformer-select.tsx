@@ -88,7 +88,7 @@ export function TransformerSelect({
                         <SelectValue placeholder="No transformers available" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="error">No transformers loaded</SelectItem>
+                        <SelectItem value="none">No transformers loaded</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -113,7 +113,10 @@ export function TransformerSelect({
                     <SelectValue placeholder={placeholder} />
                 </SelectTrigger>
                 <SelectContent>
-                    {/* ✅ ONLY show transformers - NO empty string values */}
+                    {/* ✅ Add "None" option with non-empty value */}
+                    <SelectItem value="none">None</SelectItem>
+
+                    {/* ✅ Show all transformers */}
                     {transformers.map((transformer) => (
                         <SelectItem key={transformer.id} value={transformer.id}>
                             <div className="flex flex-col">
@@ -126,13 +129,6 @@ export function TransformerSelect({
                             </div>
                         </SelectItem>
                     ))}
-
-                    {transformers.length > 0 && (
-                        <SelectItem value="none">None</SelectItem>
-                    )}
-
-                    {/* ✅ REMOVED the problematic empty string SelectItem */}
-                    {/* If you need a "None" option, use a non-empty value like "none" */}
                 </SelectContent>
             </Select>
 
