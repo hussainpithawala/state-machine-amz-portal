@@ -8,6 +8,7 @@ const launchExecutionSchema = z.object({
     input: z.record(z.any()).optional(), // Now optional
     sourceExecutionId: z.string().optional(), // Optional
     sourceStateName: z.string().optional(), // Optional
+    sourceInputTransformer: z.string().optional(), // ✅ NEW FIELD
 }).refine(
     (data) => {
         // Either input OR sourceExecutionId must be provided (or both)
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
                     // Include source fields only if provided
                     ...(validated.sourceExecutionId && { sourceExecutionId: validated.sourceExecutionId }),
                     ...(validated.sourceStateName && { sourceStateName: validated.sourceStateName }),
+                    ...(validated.sourceInputTransformer && { sourceInputTransformer: validated.sourceInputTransformer }), // ✅ NEW FIELD
                 }),
                 signal: AbortSignal.timeout(10000), // 10 second timeout
             }
