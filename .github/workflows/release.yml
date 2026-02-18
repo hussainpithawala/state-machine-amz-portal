@@ -60,19 +60,21 @@ jobs:
       - name: Prepare Docker tags
         id: docker_tags
         run: |
-          REPO="${{ github.repository }}"
-          GHCR="ghcr.io/${{ github.repository }}"
+          # Use Docker Hub username for Docker Hub images
+          DOCKERHUB_REPO="${{ secrets.DOCKERHUB_USERNAME }}/state-machine-amz-portal"
+          # Use GitHub repository for GHCR images
+          GHCR_REPO="ghcr.io/${{ github.repository }}"
           VERSION="${{ env.VERSION }}"
           
           TAGS=""
           # Always include version tag
-          TAGS+="${REPO}:${VERSION}\n"
-          TAGS+="${GHCR}:${VERSION}\n"
+          TAGS+="${DOCKERHUB_REPO}:${VERSION}\n"
+          TAGS+="${GHCR_REPO}:${VERSION}\n"
           
           # Also include 'latest' if explicitly requested or on tagged release
           if [[ "${{ github.event.inputs.version }}" == "latest" ]] || [[ "${{ github.ref_type }}" == "tag" ]]; then
-            TAGS+="${REPO}:latest\n"
-            TAGS+="${GHCR}:latest\n"
+            TAGS+="${DOCKERHUB_REPO}:latest\n"
+            TAGS+="${GHCR_REPO}:latest\n"
           fi
           
           echo "TAGS<<EOF" >> $GITHUB_ENV
