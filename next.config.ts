@@ -1,13 +1,9 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-    // Enable standalone output for Docker
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
     output: 'standalone',
-
-    // Your existing config
     reactStrictMode: true,
-    swcMinify: true,
-
-    // Add any other config you have
+    // swcMinify is enabled by default in Next.js 16+, no need to specify
 };
 
-module.exports = nextConfig;
+export default nextConfig;

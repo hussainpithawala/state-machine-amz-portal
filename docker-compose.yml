@@ -6,6 +6,7 @@ services:
     ports:
       - "3000:3000"
     environment:
+      - PORT=3000
       - STATE_MACHINE_SERVICE_URL=http://host.docker.internal:9090
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/statemachine_gin
     restart: unless-stopped

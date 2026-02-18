@@ -1,46 +1,49 @@
-# Use the official Node.js runtime as base image
-FROM node:24-alpine AS base
+# Use the official Node.js runtime as base image (Debian-based, linux/amd64)
+FROM node:24 AS base
 
 # Set working directory
 WORKDIR /app
 
-# Install dependencies first (for better caching)
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
-
 # Build the application
 FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json* ./
+# Install ALL dependencies (including devDependencies) for build
+RUN npm ci
+
 COPY . .
 RUN npm run build
 
-# Production stage
+# Production stage - only production dependencies
 FROM base AS runner
 WORKDIR /app
 
-# Don't run as root
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-USER nextjs
+# Create non-root user
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 --gid nodejs nextjs
 
-COPY --from=deps /app/node_modules ./node_modules
+# Install production dependencies as root
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
+
+# Copy built application
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# Environment variables
+# Set default environment variables
 ENV PORT=3000
 ENV NODE_ENV=production
 
-# Expose port
-EXPOSE 3000
+# Expose the port (for documentation purposes)
+EXPOSE $PORT
 
-# Health check
+# Change ownership to non-root user
+RUN chown -R nextjs:nodejs ./
+USER nextjs
+
+# Health check using dynamic port
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/api/health || exit 1
+  CMD curl -f http://localhost:$PORT/api/health || exit 1
 
-# Start the application
+# Start the application with dynamic port
 CMD ["node", "server.js"]
