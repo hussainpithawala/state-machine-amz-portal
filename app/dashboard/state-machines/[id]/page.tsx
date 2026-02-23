@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/table';
 import {StartExecutionModal} from '@/components/modals/start-execution-modal';
 import {StartBatchExecutionModal} from '@/components/modals/start-batch-execution-modal';
+import {StateMachineDiagram} from '@/components/state-machine-diagram';
 
 interface StateMachineDetail {
     stateMachine: StateMachine;
@@ -329,6 +330,10 @@ export default function StateMachineDetailPage() {
                                 <FileJson className="h-4 w-4 mr-2"/>
                                 Definition
                             </TabsTrigger>
+                            <TabsTrigger value="diagram">
+                                <GitBranch className="h-4 w-4 mr-2"/>
+                                Diagram
+                            </TabsTrigger>
                             <TabsTrigger value="metadata">
                                 <FileJson className="h-4 w-4 mr-2"/>
                                 Metadata
@@ -358,6 +363,11 @@ export default function StateMachineDetailPage() {
                 {formatJson(definitionToDisplay)}
               </pre>
                         </div>
+                    ) : activeTab === 'diagram' ? (
+                        <StateMachineDiagram
+                            definition={stateMachine.definition}
+                            className="max-h-[600px]"
+                        />
                     ) : activeTab === 'metadata' ? (
                         <div className="bg-gray-50 p-4 rounded-lg min-h-[200px]">
                             {stateMachine.metadata && Object.keys(stateMachine.metadata).length > 0 ? (
