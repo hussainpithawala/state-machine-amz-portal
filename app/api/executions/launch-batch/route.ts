@@ -6,10 +6,13 @@ const launchBatchExecutionSchema = z.object({
     stateMachineId: z.string().min(1, 'State Machine ID is required'),
     filter: z.object({
         sourceStateMachineId: z.string().min(1, 'Source State Machine ID is required'),
+        sourceStateName: z.string().optional(),
+        sourceInputTransformer: z.string().optional(),
         status: z.enum(['RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'TIMED_OUT', 'ABORTED', 'PAUSED']).optional(),
         startTimeFrom: z.number().int().optional(),
         startTimeTo: z.number().int().optional(),
         namePattern: z.string().optional(),
+        applyUnique: z.boolean().optional().default(false),
         limit: z.number().int().min(1).max(1000).optional().default(10),
     }),
     namePrefix: z.string().min(1, 'Name prefix is required'),

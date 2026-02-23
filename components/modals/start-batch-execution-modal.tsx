@@ -49,6 +49,7 @@ export function StartBatchExecutionModal({
         concurrency: '5',
         mode: 'concurrent' as 'distributed' | 'concurrent' | 'sequential',
         stopOnError: false,
+        applyUnique: false, // ✅ NEW FLAG
     });
 
     const [loading, setLoading] = useState(false);
@@ -79,6 +80,11 @@ export function StartBatchExecutionModal({
     const handleTransformerChange = (value: string) => {
         const actualValue = value === "none" ? "" : value;
         setFormData(prev => ({ ...prev, sourceInputTransformer: actualValue }));
+        setError(null);
+    };
+
+    const handleCheckboxChange = (name: string, checked: boolean) => {
+        setFormData(prev => ({ ...prev, [name]: checked }));
         setError(null);
     };
 
@@ -125,7 +131,7 @@ export function StartBatchExecutionModal({
             };
 
             if (formData.status) {
-                requestBody.filter.status = formData.status;
+                requestBody.filter.status = formData.status.trim();
             }
 
             if (formData.sourceStateName.trim()) {
@@ -149,6 +155,9 @@ export function StartBatchExecutionModal({
             }
 
             requestBody.filter.limit = limit;
+
+            // ✅ Add applyUnique flag
+            requestBody.filter.applyUnique = formData.applyUnique;
 
             const response = await fetch('/api/executions/launch-batch', {
                 method: 'POST',
@@ -333,6 +342,27 @@ export function StartBatchExecutionModal({
                                     placeholder="execution-*"
                                     disabled={loading}
                                 />
+                            </div>
+                            {/* ✅ NEW: Apply Unique Checkbox */}
+                            <div className="flex items-start space-x-2 pt-2">
+                                <input
+                                    id="applyUnique"
+                                    name="applyUnique"
+                                    type="checkbox"
+                                    checked={formData.applyUnique}
+                                    onChange={(e) => handleCheckboxChange('applyUnique', e.target.checked)}
+                                    disabled={loading}
+                                    className="h-4 w-4 mt-1 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <div>
+                                    <label htmlFor="applyUnique" className="text-sm font-medium text-gray-700">
+                                        Apply Unique Filtering
+                                    </label>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        When enabled, only unique source executions (based on correlation keys) will be processed.
+                                        Prevents duplicate processing of the same business entity.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
