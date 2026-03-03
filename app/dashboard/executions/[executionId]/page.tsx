@@ -3,6 +3,7 @@
 import {useState, useEffect} from 'react';
 import {useParams, useRouter} from 'next/navigation';
 import {Button} from '@/components/ui/button';
+import {Input} from '@/components/ui/input';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Badge} from '@/components/ui/badge';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
@@ -383,7 +384,95 @@ function SummaryCard({title, count, icon: Icon, color}: {
     )
 }
 
+interface DetectedLoop {
+    startIndex: number;
+    patternLength: number;
+    repeatCount: number;
+}
+
+function getStateSignature(state: StateHistoryEntry): string {
+    return `${state.stateName}::${state.stateType}`;
+}
+
+function matchesPattern(
+    signatures: string[],
+    startIndex: number,
+    patternLength: number,
+    repeatOffset: number
+): boolean {
+    const candidateStart = startIndex + repeatOffset * patternLength;
+
+    for (let i = 0; i < patternLength; i++) {
+        if (signatures[startIndex + i] !== signatures[candidateStart + i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function detectRepeatedLoop(states: StateHistoryEntry[]): DetectedLoop | null {
+    if (states.length < 2) {
+        return null;
+    }
+
+    const signatures = states.map(getStateSignature);
+    let bestLoop: DetectedLoop | null = null;
+
+    for (let startIndex = 0; startIndex < signatures.length - 1; startIndex++) {
+        const maxPatternLength = Math.floor((signatures.length - startIndex) / 2);
+
+        for (let patternLength = 1; patternLength <= maxPatternLength; patternLength++) {
+            let repeatCount = 1;
+
+            while (
+                startIndex + (repeatCount + 1) * patternLength <= signatures.length &&
+                matchesPattern(signatures, startIndex, patternLength, repeatCount)
+                ) {
+                repeatCount++;
+            }
+
+            if (repeatCount < 2) {
+                continue;
+            }
+
+            const candidateCoverage = repeatCount * patternLength;
+            const bestCoverage = bestLoop ? bestLoop.repeatCount * bestLoop.patternLength : 0;
+            const isBetterCoverage = candidateCoverage > bestCoverage;
+            const isEarlierAtSameCoverage =
+                !!bestLoop && candidateCoverage === bestCoverage && startIndex < bestLoop.startIndex;
+            const isShorterAtSameCoverageAndStart =
+                !!bestLoop &&
+                candidateCoverage === bestCoverage &&
+                startIndex === bestLoop.startIndex &&
+                patternLength < bestLoop.patternLength;
+
+            if (!bestLoop || isBetterCoverage || isEarlierAtSameCoverage || isShorterAtSameCoverageAndStart) {
+                bestLoop = {startIndex, patternLength, repeatCount};
+            }
+        }
+    }
+
+    return bestLoop;
+}
+
 function StateTimeline({states}: { states: StateHistoryEntry[] }) {
+    const detectedLoop = detectRepeatedLoop(states);
+    const [selectedLoopIndex, setSelectedLoopIndex] = useState(0);
+
+    useEffect(() => {
+        if (!detectedLoop) {
+            setSelectedLoopIndex(0);
+            return;
+        }
+
+        setSelectedLoopIndex((previous) => {
+            if (previous < 0) return 0;
+            if (previous > detectedLoop.repeatCount - 1) return detectedLoop.repeatCount - 1;
+            return previous;
+        });
+    }, [detectedLoop?.startIndex, detectedLoop?.patternLength, detectedLoop?.repeatCount]);
+
     if (states.length === 0) {
         return (
             <div className="text-center py-8 text-gray-500">
@@ -394,12 +483,67 @@ function StateTimeline({states}: { states: StateHistoryEntry[] }) {
         );
     }
 
+    const activeLoopIndex = detectedLoop
+        ? Math.min(Math.max(selectedLoopIndex, 0), detectedLoop.repeatCount - 1)
+        : 0;
+
+    const visibleStates = detectedLoop
+        ? [
+            ...states.slice(0, detectedLoop.startIndex),
+            ...states.slice(
+                detectedLoop.startIndex + activeLoopIndex * detectedLoop.patternLength,
+                detectedLoop.startIndex + (activeLoopIndex + 1) * detectedLoop.patternLength
+            ),
+            ...states.slice(detectedLoop.startIndex + detectedLoop.repeatCount * detectedLoop.patternLength)
+        ]
+        : states;
+
+    const loopPattern = detectedLoop
+        ? states
+            .slice(detectedLoop.startIndex, detectedLoop.startIndex + detectedLoop.patternLength)
+            .map((state) => state.stateName)
+            .join(' -> ')
+        : '';
+
     return (
         <div className="space-y-6">
-            {states.map((state, index) => {
-                const isLast = index === states.length - 1;
-                console.log(state.endTime);
-                console.log(state);
+            {detectedLoop && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-sm text-amber-900">
+                        Loop detected: <code className="rounded bg-amber-100 px-1 py-0.5">{loopPattern}</code> repeated{' '}
+                        <span className="font-semibold">{detectedLoop.repeatCount}</span> times. Showing iteration index{' '}
+                        <span className="font-semibold">{activeLoopIndex}</span> (0-based).
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <label htmlFor="loop-iteration-index" className="text-xs font-medium text-amber-900">
+                            Iteration Index
+                        </label>
+                        <Input
+                            id="loop-iteration-index"
+                            type="number"
+                            min={0}
+                            max={detectedLoop.repeatCount - 1}
+                            value={activeLoopIndex}
+                            onChange={(event) => {
+                                const parsed = Number.parseInt(event.target.value, 10);
+                                if (Number.isNaN(parsed)) {
+                                    setSelectedLoopIndex(0);
+                                    return;
+                                }
+                                setSelectedLoopIndex(
+                                    Math.min(Math.max(parsed, 0), detectedLoop.repeatCount - 1)
+                                );
+                            }}
+                            className="h-8 w-24"
+                        />
+                        <span className="text-xs text-amber-800">
+                            Range: 0 to {detectedLoop.repeatCount - 1}
+                        </span>
+                    </div>
+                </div>
+            )}
+            {visibleStates.map((state, index) => {
+                const isLast = index === visibleStates.length - 1;
                 const duration = state.endTime
                     ? formatDuration(state.startTime, state.endTime)
                     : 'Running...';
