@@ -36,7 +36,7 @@ export function ExecutionList({ searchParams }: ExecutionListProps) {
     const [executions, setExecutions] = useState<Execution[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [currentPage, setCurrentPage] = useState(parseInt(searchParams.page || '1'));
+    const [currentPage, setCurrentPage] = useState(parseInt(searchParams.page || '1', 10));
     const [pageSize] = useState(25);
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
@@ -44,6 +44,11 @@ export function ExecutionList({ searchParams }: ExecutionListProps) {
     useEffect(() => {
         fetchExecutions();
     }, [currentSearchParams]);
+
+    useEffect(() => {
+        const pageFromUrl = parseInt(currentSearchParams.get('page') || searchParams.page || '1', 10);
+        setCurrentPage(Number.isNaN(pageFromUrl) || pageFromUrl < 1 ? 1 : pageFromUrl);
+    }, [currentSearchParams, searchParams.page]);
 
     const fetchExecutions = async () => {
         try {
@@ -78,6 +83,7 @@ export function ExecutionList({ searchParams }: ExecutionListProps) {
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= totalPages) {
+            setCurrentPage(newPage);
             const params = new URLSearchParams(currentSearchParams.toString());
             params.set('page', newPage.toString());
             router.push(`/dashboard/executions?${params}`);
