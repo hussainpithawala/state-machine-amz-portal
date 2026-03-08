@@ -51,7 +51,9 @@ export function StartBatchExecutionModal({
         concurrency: '5',
         mode: 'concurrent' as 'distributed' | 'concurrent' | 'sequential',
         stopOnError: false,
-        applyUnique: false, // ✅ NEW FLAG
+        applyUnique: false,
+        doMicroBatch: false,
+        microBatchSize: '100',
     });
 
     const [loading, setLoading] = useState(false);
@@ -106,6 +108,7 @@ export function StartBatchExecutionModal({
 
         const concurrency = parseInt(formData.concurrency);
         const limit = parseInt(formData.limit);
+        const microBatchSize = parseInt(formData.microBatchSize);
 
         if (isNaN(concurrency) || concurrency < 1 || concurrency > 100) {
             setError('Concurrency must be between 1 and 100');
@@ -114,6 +117,11 @@ export function StartBatchExecutionModal({
 
         if (isNaN(limit) || limit < 1 || limit > 1000) {
             setError('Limit must be between 1 and 1000');
+            return;
+        }
+
+        if (formData.doMicroBatch && (isNaN(microBatchSize) || microBatchSize < 1)) {
+            setError('Micro batch size must be at least 1');
             return;
         }
 
@@ -130,6 +138,8 @@ export function StartBatchExecutionModal({
                 concurrency: concurrency,
                 mode: formData.mode,
                 stopOnError: formData.stopOnError,
+                doMicroBatch: formData.doMicroBatch,
+                microBatchSize: formData.doMicroBatch ? microBatchSize : 100,
             };
 
             if (formData.status) {
@@ -438,6 +448,41 @@ export function StartBatchExecutionModal({
                                     Stop on Error
                                 </label>
                             </div>
+
+                            <div className="flex items-center space-x-2 pt-2">
+                                <input
+                                    id="doMicroBatch"
+                                    name="doMicroBatch"
+                                    type="checkbox"
+                                    checked={formData.doMicroBatch}
+                                    onChange={(e) => handleCheckboxChange('doMicroBatch', e.target.checked)}
+                                    disabled={loading}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <label htmlFor="doMicroBatch" className="text-sm text-gray-700 flex items-center">
+                                    <GitBranch className="h-4 w-4 mr-1 text-purple-500" />
+                                    Enable Micro Batching
+                                </label>
+                            </div>
+
+                            {formData.doMicroBatch && (
+                                <div className="space-y-2">
+                                    <label htmlFor="microBatchSize" className="text-sm font-medium">Micro Batch Size</label>
+                                    <Input
+                                        id="microBatchSize"
+                                        name="microBatchSize"
+                                        type="number"
+                                        value={formData.microBatchSize}
+                                        onChange={handleChange}
+                                        placeholder="100"
+                                        min="1"
+                                        disabled={loading}
+                                    />
+                                    <p className="text-xs text-gray-500">
+                                        Number of executions to process in each micro batch
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {error && (

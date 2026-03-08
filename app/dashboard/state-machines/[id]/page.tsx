@@ -219,10 +219,10 @@ export default function StateMachineDetailPage() {
     }
 
     const {stateMachine, executionStats, recentExecutions} = stateMachineDetail;
-    
+
     // Disable execution buttons for orchestrator state machines
-    const isOrchestrator = stateMachine.id === 'micro-bulk-orchestrator-v1' || 'micro-batch-orchestrator-v1';
-    
+    const isOrchestrator = stateMachine.id === 'micro-bulk-orchestrator-v1' || stateMachine.id === 'micro-batch-orchestrator-v1';
+
     const definitionToDisplay = typeof stateMachine.definition === 'string'
         ? JSON.parse(stateMachine.definition)
         : stateMachine.definition;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +20,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Play, Package, GitBranch } from "lucide-react";
+import { Loader2, Play, Package, GitBranch, Upload, FileJson } from "lucide-react";
 import { toast } from 'sonner';
 import { TransformerSelect } from '@/components/ui/transformer-select';
 
@@ -38,6 +38,9 @@ export function StartBulkExecutionModal({
     disabled = false
 }: StartBulkExecutionModalProps) {
     const [open, setOpen] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [inputMethod, setInputMethod] = useState<'json' | 'file'>('json');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [formData, setFormData] = useState({
         namePrefix: `bulk-${stateMachineName.replace(/\s+/g, '-')}-${Date.now()}`,
         concurrency: '10',
@@ -54,6 +57,46 @@ export function StartBulkExecutionModal({
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 10 * 1024 * 1024) {
+                setError('File size must be less than 10MB');
+                setSelectedFile(null);
+                return;
+            }
+            if (!file.name.endsWith('.json')) {
+                setError('File must be a JSON file');
+                setSelectedFile(null);
+                return;
+            }
+            setError(null);
+            setSelectedFile(file);
+        }
+    };
+
+    const validateInputs = (): boolean => {
+        if (inputMethod === 'file') {
+            if (!selectedFile) {
+                setError('Please select a JSON file');
+                return false;
+            }
+            return true;
+        }
+        
+        try {
+            const inputs = JSON.parse(formData.inputs);
+            if (!Array.isArray(inputs)) {
+                setError('Inputs must be a JSON array');
+                return false;
+            }
+            return true;
+        } catch {
+            setError('Invalid JSON in inputs array');
+            return false;
+        }
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
@@ -73,20 +116,6 @@ export function StartBulkExecutionModal({
     const handleCheckboxChange = (name: string, checked: boolean) => {
         setFormData(prev => ({ ...prev, [name]: checked }));
         setError(null);
-    };
-
-    const validateInputs = (): boolean => {
-        try {
-            const inputs = JSON.parse(formData.inputs);
-            if (!Array.isArray(inputs)) {
-                setError('Inputs must be a JSON array');
-                return false;
-            }
-            return true;
-        } catch {
-            setError('Invalid JSON in inputs array');
-            return false;
-        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -130,45 +159,80 @@ export function StartBulkExecutionModal({
         setError(null);
 
         try {
-            const requestBody = {
-                stateMachineId: stateMachineId,
-                namePrefix: formData.namePrefix.trim(),
-                concurrency: concurrency,
-                mode: formData.mode,
-                stopOnError: formData.stopOnError,
-                inputs: JSON.parse(formData.inputs),
-                doMicroBatch: formData.doMicroBatch,
-                microBatchSize: formData.doMicroBatch ? microBatchSize : undefined,
-                orchestratorId: formData.orchestratorId.trim(),
-                pauseThreshold: pauseThreshold,
-                resumeStrategy: formData.resumeStrategy,
-                timeoutSeconds: timeoutSeconds,
-            };
+            if (inputMethod === 'file' && selectedFile) {
+                // Use form-data endpoint for file upload
+                const formFormData = new FormData();
+                formFormData.append('inputs', selectedFile);
+                formFormData.append('namePrefix', formData.namePrefix.trim());
+                formFormData.append('concurrency', concurrency.toString());
+                formFormData.append('mode', formData.mode);
+                formFormData.append('stopOnError', formData.stopOnError.toString());
+                formFormData.append('doMicroBatch', formData.doMicroBatch.toString());
+                if (formData.doMicroBatch) {
+                    formFormData.append('microBatchSize', microBatchSize.toString());
+                }
+                if (formData.orchestratorId.trim()) {
+                    formFormData.append('orchestratorId', formData.orchestratorId.trim());
+                }
 
-            const response = await fetch('/api/executions/launch-bulk', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-            });
+                const response = await fetch(`/api/executions/launch-bulk-form?stateMachineId=${encodeURIComponent(stateMachineId)}`, {
+                    method: 'POST',
+                    body: formFormData,
+                });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP ${response.status}`);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                toast.success(`Bulk execution started successfully!`, {
+                    description: `Orchestrator ID: ${result.orchestratorId}`,
+                });
+            } else {
+                // Use JSON endpoint for raw JSON input
+                const requestBody = {
+                    stateMachineId: stateMachineId,
+                    namePrefix: formData.namePrefix.trim(),
+                    concurrency: concurrency,
+                    mode: formData.mode,
+                    stopOnError: formData.stopOnError,
+                    inputs: JSON.parse(formData.inputs),
+                    doMicroBatch: formData.doMicroBatch,
+                    microBatchSize: formData.doMicroBatch ? microBatchSize : undefined,
+                    orchestratorId: formData.orchestratorId.trim(),
+                    pauseThreshold: pauseThreshold,
+                    resumeStrategy: formData.resumeStrategy,
+                    timeoutSeconds: timeoutSeconds,
+                };
+
+                const response = await fetch('/api/executions/launch-bulk', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                toast.success(`Bulk execution started successfully!`, {
+                    description: `Name prefix: ${result.namePrefix || formData.namePrefix}`,
+                });
             }
-
-            const result = await response.json();
-
-            toast.success(`Bulk execution started successfully!`, {
-                description: `Name prefix: ${result.namePrefix || formData.namePrefix}`,
-            });
 
             if (onSuccess) {
                 onSuccess();
             }
 
             setOpen(false);
+            setSelectedFile(null);
 
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to launch bulk execution';
@@ -207,24 +271,75 @@ export function StartBulkExecutionModal({
                                 Bulk Inputs
                             </h3>
 
-                            <div className="space-y-2">
-                                <label htmlFor="inputs" className="text-sm font-medium">
-                                    Inputs Array (JSON) *
-                                </label>
-                                <Textarea
-                                    id="inputs"
-                                    name="inputs"
-                                    value={formData.inputs}
-                                    onChange={handleChange}
-                                    placeholder='[{"orderId": "1"}, {"orderId": "2"}]'
-                                    className="font-mono text-sm min-h-[200px]"
-                                    disabled={loading}
-                                    required
-                                />
-                                <p className="text-xs text-gray-500">
-                                    Provide an array of JSON objects. Each object will trigger a separate execution.
-                                </p>
+                            {/* Input Method Toggle */}
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant={inputMethod === 'json' ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setInputMethod('json')}
+                                    className="flex-1"
+                                >
+                                    <FileJson className="h-4 w-4 mr-2" />
+                                    JSON Input
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={inputMethod === 'file' ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setInputMethod('file')}
+                                    className="flex-1"
+                                >
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    File Upload
+                                </Button>
                             </div>
+
+                            {inputMethod === 'json' ? (
+                                <div className="space-y-2">
+                                    <label htmlFor="inputs" className="text-sm font-medium">
+                                        Inputs Array (JSON) *
+                                    </label>
+                                    <Textarea
+                                        id="inputs"
+                                        name="inputs"
+                                        value={formData.inputs}
+                                        onChange={handleChange}
+                                        placeholder='[{"orderId": "1"}, {"orderId": "2"}]'
+                                        className="font-mono text-sm min-h-[200px]"
+                                        disabled={loading}
+                                        required
+                                    />
+                                    <p className="text-xs text-gray-500">
+                                        Provide an array of JSON objects. Each object will trigger a separate execution.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <label htmlFor="inputsFile" className="text-sm font-medium">
+                                        Upload JSON File *
+                                    </label>
+                                    <Input
+                                        id="inputsFile"
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileChange}
+                                        accept=".json,application/json"
+                                        disabled={loading}
+                                        className="cursor-pointer"
+                                    />
+                                    {selectedFile && (
+                                        <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded">
+                                            <FileJson className="h-4 w-4" />
+                                            <span>{selectedFile.name}</span>
+                                            <span className="text-gray-500">({(selectedFile.size / 1024).toFixed(2)} KB)</span>
+                                        </div>
+                                    )}
+                                    <p className="text-xs text-gray-500">
+                                        Upload a JSON file containing an array of inputs. Max file size: 10MB.
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Bulk Configuration Section */}

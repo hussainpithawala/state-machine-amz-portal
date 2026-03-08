@@ -19,6 +19,8 @@ const launchBatchExecutionSchema = z.object({
     concurrency: z.number().int().min(1).max(100).optional().default(5),
     mode: z.enum(['distributed', 'concurrent', 'sequential']).optional().default('concurrent'),
     stopOnError: z.boolean().optional().default(false),
+    doMicroBatch: z.boolean().optional().default(false),
+    microBatchSize: z.number().int().min(1).optional().default(100),
 });
 
 export async function POST(request: NextRequest) {
@@ -42,6 +44,8 @@ export async function POST(request: NextRequest) {
                     concurrency: validated.concurrency,
                     mode: validated.mode,
                     stopOnError: validated.stopOnError,
+                    doMicroBatch: validated.doMicroBatch,
+                    microBatchSize: validated.doMicroBatch ? validated.microBatchSize : undefined,
                 }),
                 signal: AbortSignal.timeout(15000), // 15 second timeout for batch operations
             }
