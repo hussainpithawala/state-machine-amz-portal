@@ -22,12 +22,14 @@ interface StartExecutionModalProps {
     stateMachineId: string;
     stateMachineName: string;
     onSuccess?: () => void;
+    disabled?: boolean;
 }
 
 export function StartExecutionModal({
                                         stateMachineId,
                                         stateMachineName,
-                                        onSuccess
+                                        onSuccess,
+                                        disabled = false
                                     }: StartExecutionModalProps) {
     const [open, setOpen] = useState(false);
     const [formData, setFormData] = useState({
@@ -176,7 +178,7 @@ export function StartExecutionModal({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>
+                <Button disabled={disabled}>
                     <Play className="h-4 w-4 mr-2" />
                     Start Execution
                 </Button>

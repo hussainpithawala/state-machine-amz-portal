@@ -219,6 +219,10 @@ export default function StateMachineDetailPage() {
     }
 
     const {stateMachine, executionStats, recentExecutions} = stateMachineDetail;
+    
+    // Disable execution buttons for orchestrator state machines
+    const isOrchestrator = stateMachine.id === 'micro-bulk-orchestrator-v1' || 'micro-batch-orchestrator-v1';
+    
     const definitionToDisplay = typeof stateMachine.definition === 'string'
         ? JSON.parse(stateMachine.definition)
         : stateMachine.definition;
@@ -250,6 +254,7 @@ export default function StateMachineDetailPage() {
                         onSuccess={() => {
                             fetchStateMachineDetail();
                         }}
+                        disabled={isOrchestrator}
                     />
                     <StartBatchExecutionModal
                         stateMachineId={stateMachine.id}
@@ -257,6 +262,7 @@ export default function StateMachineDetailPage() {
                         onSuccess={() => {
                             fetchStateMachineDetail();
                         }}
+                        disabled={isOrchestrator}
                     />
                     <StartBulkExecutionModal
                         stateMachineId={stateMachine.id}
@@ -264,11 +270,12 @@ export default function StateMachineDetailPage() {
                         onSuccess={() => {
                             fetchStateMachineDetail();
                         }}
+                        disabled={isOrchestrator}
                     />
-                    <Button variant="outline" size="icon" onClick={handleEdit}>
+                    <Button variant="outline" size="icon" onClick={handleEdit} disabled={isOrchestrator}>
                         <Edit className="h-4 w-4"/>
                     </Button>
-                    <Button variant="destructive" size="icon" onClick={handleDelete}>
+                    <Button variant="destructive" size="icon" onClick={handleDelete} disabled={isOrchestrator}>
                         <Trash2 className="h-4 w-4"/>
                     </Button>
                 </div>

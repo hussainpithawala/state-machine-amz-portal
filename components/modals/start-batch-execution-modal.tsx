@@ -28,12 +28,14 @@ interface StartBatchExecutionModalProps {
     stateMachineId: string;
     stateMachineName: string;
     onSuccess?: () => void;
+    disabled?: boolean;
 }
 
 export function StartBatchExecutionModal({
                                              stateMachineId,
                                              stateMachineName,
-                                             onSuccess
+                                             onSuccess,
+                                             disabled = false
                                          }: StartBatchExecutionModalProps) {
     const [open, setOpen] = useState(false);
     const [formData, setFormData] = useState({
@@ -199,7 +201,7 @@ export function StartBatchExecutionModal({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" disabled={disabled}>
                     <Layers className="h-4 w-4 mr-2" />
                     Start Batch Execution
                 </Button>
