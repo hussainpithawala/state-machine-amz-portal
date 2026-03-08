@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/table';
 import {StartExecutionModal} from '@/components/modals/start-execution-modal';
 import {StartBatchExecutionModal} from '@/components/modals/start-batch-execution-modal';
+import {StartBulkExecutionModal} from '@/components/modals/start-bulk-execution-modal';
 import {StateMachineDiagram} from '@/components/state-machine-diagram';
 
 interface StateMachineDetail {
@@ -251,6 +252,13 @@ export default function StateMachineDetailPage() {
                         }}
                     />
                     <StartBatchExecutionModal
+                        stateMachineId={stateMachine.id}
+                        stateMachineName={stateMachine.name}
+                        onSuccess={() => {
+                            fetchStateMachineDetail();
+                        }}
+                    />
+                    <StartBulkExecutionModal
                         stateMachineId={stateMachine.id}
                         stateMachineName={stateMachine.name}
                         onSuccess={() => {
