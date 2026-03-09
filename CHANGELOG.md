@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.6] - 2026-03-09
+
+### Added
+- **Bulk Execution**: New bulk execution feature with support for launching multiple executions with custom inputs
+  - JSON input array or file upload (max 10MB) support
+  - Configurable concurrency (1-100) and execution mode (concurrent/sequential)
+  - Micro-batching support with customizable batch size
+  - Advanced configuration: pause threshold, resume strategy (manual/auto), timeout settings
+  - Orchestrator ID tracking for bulk operations
+- **API Endpoints**: 
+  - `/api/executions/launch-bulk` - JSON-based bulk execution launch
+  - `/api/executions/launch-bulk-form` - Form-data bulk execution with file upload
+- **UI Components**:
+  - `StartBulkExecutionModal` - Full-featured modal for bulk execution with input method toggle
+  - Micro-batch configuration UI in batch execution modal
+- **Loop Detection**: Automatic detection of repeated state patterns in execution timeline
+  - Visual alert when loops are detected
+  - Iteration index selector to navigate through loop repetitions
+  - State signature matching algorithm for pattern recognition
+- **Orchestrator Protection**: Disable execution buttons for orchestrator state machines (`micro-bulk-orchestrator-v1`, `micro-batch-orchestrator-v1`)
+
+### Changed
+- **Execution List**: Improved pagination handling with proper state synchronization
+- **Batch Execution**: Added micro-batching support with configurable batch size
+- **Modal Components**: Added `disabled` prop to all execution modals for better control
+
+### Enhanced
+- **State Timeline**: Enhanced visualization with loop detection and iteration navigation
+- **Input Validation**: Comprehensive validation for bulk execution parameters
+- **Error Handling**: Improved error messages and toast notifications for bulk operations
+
 ## [1.0.5] - 2026-02-23
 
 - Feature: Added batch execution functionality

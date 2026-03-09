@@ -24,6 +24,15 @@ This portal provides a comprehensive UI for monitoring state machine executions,
 - 🔍 **Advanced Search** - Filter executions by status, date, state machine
 - 📱 **Responsive Design** - Works on desktop and mobile devices
 - 🎨 **Modern UI** - Built with Shadcn UI and Tailwind CSS
+- 🚀 **Bulk Execution** - Launch multiple executions with customizable inputs
+  - JSON array input or file upload (max 10MB)
+  - Configurable concurrency and execution mode
+  - Micro-batching support with orchestrator tracking
+  - Advanced controls: pause threshold, resume strategy, timeout settings
+- 🔁 **Loop Detection** - Automatic detection of repeated state patterns in execution timeline
+  - Visual alerts for detected loops
+  - Iteration navigation for debugging repetitive state transitions
+- 🛡️ **Orchestrator Protection** - Prevent accidental execution of orchestrator state machines
 
 ## 🛠️ Tech Stack
 
