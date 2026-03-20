@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dependencies** — Resolved peer dependency conflicts for React 19:
   - Upgraded `@testing-library/react` from v14 to v16 (supports React 19)
   - Upgraded `@testing-library/dom` from v9 to v10 (required by @testing-library/react v16)
+  - Upgraded `drizzle-kit` from v0.18.1 to v0.31.9 (fixes `dialect` property type error)
   
 - **Scripts** — Restored `type-check` script in `package.json` for TypeScript validation
 

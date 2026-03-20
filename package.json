@@ -52,7 +52,7 @@
     "@typescript-eslint/parser": "^8.55.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.24",
-    "drizzle-kit": "^0.18.1",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.0.0",
     "eslint-plugin-react-hooks": "^7.0.1",
