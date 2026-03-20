@@ -7,31 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.8] - 2026-03-21
 
-### Added
-- **Pause/Resume Execution Support** — Ability to resume paused executions:
-  - New `POST /api/executions/{id}/resume` endpoint
-  - Resume button on paused execution detail pages with loading state management
-  - Paused status card displaying current state information
-
-- **Dynamic State Name & Status Filters** — Advanced execution filtering:
-  - Dynamic state name dropdown that auto-populates based on selected State Machine ID
-  - State status filter (SUCCEEDED, FAILED, RUNNING, WAITING, RETRYING, CANCELLED, TIMED_OUT)
-  - New API endpoint `/api/state-machines/[id]/states` to fetch available states and their statuses
-  - Enhanced filter UI with improved clear filters functionality
-
-- **Testing Infrastructure** — Vitest testing framework:
-  - `@testing-library/react` integration for component testing
-  - Test configuration files (`vitest.config.ts`, `vitest.setup.ts`)
-  - Initial component tests for bulk execution modals
-
-### Changed
-- **Dependencies** — Updated testing libraries for React 19 compatibility:
+### Fixed
+- **Dependencies** — Resolved peer dependency conflicts for React 19:
   - Upgraded `@testing-library/react` from v14 to v16 (supports React 19)
+  - Upgraded `@testing-library/dom` from v9 to v10 (required by @testing-library/react v16)
   
 - **Scripts** — Restored `type-check` script in `package.json` for TypeScript validation
 
-### Fixed
-- **TypeScript** — Resolved module resolution errors for state machine states API route
+- **Missing File** — Restored `app/api/state-machines/[id]/states/route.ts` that was missing from working directory
+
+### Changed
+- **Vitest Config** — Updated test configuration with improved path resolution and CSS handling
 
 ## [1.0.7] - 2026-03-20
 
