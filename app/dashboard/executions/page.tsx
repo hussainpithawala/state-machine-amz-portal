@@ -15,6 +15,8 @@ export default async function ExecutionsPage({
         status?: string;
         search?: string;
         dateRange?: string;
+        stateName?: string;
+        stateStatus?: string;
     }>;
 }) {
     const resolvedSearchParams = await searchParams;

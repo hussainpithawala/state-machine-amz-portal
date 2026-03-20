@@ -26,6 +26,8 @@ interface ExecutionListProps {
         status?: string;
         search?: string;
         dateRange?: string;
+        stateName?: string;
+        stateStatus?: string;
     };
 }
 
@@ -92,7 +94,7 @@ export function ExecutionList({ searchParams }: ExecutionListProps) {
 
     const hasActiveFilters = () => {
         const params = currentSearchParams;
-        return params.get('search') || params.get('status') || params.get('stateMachineId') || params.get('dateRange') !== '30d';
+        return params.get('search') || params.get('status') || params.get('stateMachineId') || params.get('dateRange') !== '30d' || params.get('stateName') || params.get('stateStatus');
     };
 
     if (loading) {

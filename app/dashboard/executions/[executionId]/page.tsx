@@ -72,6 +72,7 @@ export default function ExecutionDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('timeline');
+    const [resuming, setResuming] = useState(false);
 
     useEffect(() => {
         fetchExecutionDetail();
@@ -134,6 +135,31 @@ export default function ExecutionDetailPage() {
         alert('Restart functionality would be implemented here');
     };
 
+    const handleResume = async () => {
+        try {
+            setResuming(true);
+            const response = await fetch(`/api/executions/${encodeURIComponent(executionId)}/resume`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to resume execution');
+            }
+
+            await fetchExecutionDetail();
+            alert('Execution resumed successfully');
+        } catch (err) {
+            console.error('Error resuming execution:', err);
+            alert(err instanceof Error ? err.message : 'Failed to resume execution');
+        } finally {
+            setResuming(false);
+        }
+    };
+
     if (loading) {
         return <ExecutionDetailSkeleton/>;
     }
@@ -171,6 +197,7 @@ export default function ExecutionDetailPage() {
     const isRunning = execution.status === 'RUNNING';
     const hasFailed = execution.status === 'FAILED';
     const hasSucceeded = execution.status === 'SUCCEEDED';
+    const isPaused = execution.status === 'PAUSED';
 
     return (
         <div className="space-y-6 max-w-6xl mx-auto">
@@ -280,6 +307,51 @@ export default function ExecutionDetailPage() {
                 <SummaryCard title="Retrying" count={summary.retrying} icon={RotateCcw} color="text-yellow-500"/>
                 <SummaryCard title="Waiting" count={summary.waiting} icon={Clock} color="text-blue-500"/>
             </div>
+
+            {/* Paused Status Card */}
+            {isPaused && (
+                <Card className="border-amber-300 bg-amber-50">
+                    <CardHeader>
+                        <CardTitle className="flex items-center text-amber-900">
+                            <Pause className="h-5 w-5 mr-2"/>
+                            Execution Paused
+                        </CardTitle>
+                        <CardDescription className="text-amber-700">
+                            This execution is currently in a paused state
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            <div className="flex items-center space-x-2">
+                                <AlertCircle className="h-5 w-5 text-amber-600"/>
+                                <span className="text-sm font-medium text-amber-900">
+                                    Current State: <code className="bg-amber-100 px-2 py-1 rounded">{execution.currentState}</code>
+                                </span>
+                            </div>
+                            <p className="text-sm text-amber-800">
+                                The execution has been paused and will not proceed until resumed. Click the button below to resume execution.
+                            </p>
+                            <Button 
+                                onClick={handleResume} 
+                                disabled={resuming}
+                                className="bg-amber-600 hover:bg-amber-700 text-white"
+                            >
+                                {resuming ? (
+                                    <>
+                                        <RotateCcw className="h-4 w-4 mr-2 animate-spin"/>
+                                        Resuming...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Play className="h-4 w-4 mr-2"/>
+                                        Resume Execution
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Tabs */}
             <Card>

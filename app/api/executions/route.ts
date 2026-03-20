@@ -10,12 +10,14 @@ import {
     gte,
     lte,
     desc,
-    asc
+    asc,
+    exists
 } from 'drizzle-orm';
 import {z} from 'zod';
 import {subDays, startOfDay, endOfDay} from 'date-fns';
 
 type ExecutionStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'TIMED_OUT' | 'ABORTED' | 'PAUSED';
+type StateHistoryStatus = 'SUCCEEDED' | 'FAILED' | 'RUNNING' | 'CANCELLED' | 'TIMED_OUT' | 'RETRYING' | 'WAITING';
 
 // Validation schema
 const executionsQuerySchema = z.object({
@@ -30,6 +32,8 @@ const executionsQuerySchema = z.object({
     sortBy: z.enum(['startTime', 'endTime', 'status']).optional().default('startTime'),
     order: z.enum(['asc', 'desc']).optional().default('desc'),
     executionId: z.string().optional(), // For single execution lookup
+    stateName: z.string().optional(), // Filter by current state name
+    stateStatus: z.enum(['SUCCEEDED', 'FAILED', 'RUNNING', 'CANCELLED', 'TIMED_OUT', 'RETRYING', 'WAITING']).optional(), // Filter by state status
 });
 
 export async function GET(request: NextRequest) {
@@ -122,6 +126,37 @@ export async function GET(request: NextRequest) {
             );
         }
 
+        // Filter by state name and/or state status using state_history
+        if (validated.stateName || validated.stateStatus) {
+            const stateHistoryConditions: any[] = [];
+            
+            // Join with state_history to filter by state name
+            if (validated.stateName) {
+                stateHistoryConditions.push(eq(stateHistory.stateName, validated.stateName));
+            }
+            
+            // Filter by state status
+            if (validated.stateStatus) {
+                stateHistoryConditions.push(eq(stateHistory.status, validated.stateStatus));
+            }
+            
+            // Use EXISTS to filter executions that have matching state history
+            whereConditions.push(
+                exists(
+                    db
+                        .select({ id: stateHistory.id })
+                        .from(stateHistory)
+                        .where(
+                            and(
+                                eq(stateHistory.executionId, executions.executionId),
+                                eq(stateHistory.executionStartTime, executions.startTime),
+                                ...stateHistoryConditions
+                            )
+                        )
+                )
+            );
+        }
+
         // Get total count
         const countResult = await db
             .select({total: count()})
@@ -160,6 +195,8 @@ export async function GET(request: NextRequest) {
                 stateMachineId: validated.stateMachineId,
                 status: validated.status,
                 dateRange: validated.dateRange,
+                stateName: validated.stateName,
+                stateStatus: validated.stateStatus,
             },
         });
     } catch (error) {
