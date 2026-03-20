@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-03-20
+
+### Added
+- **State Name & Status Filters**: Advanced execution filtering capabilities
+  - Dynamic state name dropdown that auto-populates based on selected State Machine ID
+  - State status filter (SUCCEEDED, FAILED, RUNNING, WAITING, RETRYING, CANCELLED, TIMED_OUT)
+  - New API endpoint `/api/state-machines/[id]/states` to fetch available states and their statuses
+  - Enhanced filter UI with clear filters functionality
+- **Pause/Resume Functionality**: Ability to resume paused executions
+  - New `POST /api/executions/{id}/resume` endpoint
+  - Resume button on paused execution detail pages with loading state management
+  - Paused status card displaying current state information
+- **Testing Infrastructure**: Vitest testing framework setup
+  - `@testing-library/react` integration
+  - Test configuration files (`vitest.config.ts`, `vitest.setup.ts`)
+  - Initial component tests for execution modals
+
+### Changed
+- **Execution Filters UI**: Enhanced `ExecutionFilters.tsx` with dynamic dropdowns and improved UX
+- **Type Definitions**: Updated execution list and page types to support new filter parameters
+
 ## [1.0.6] - 2026-03-09
 
 ### Added
