@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Search, Calendar, X, Filter, Clock } from 'lucide-react';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { StateMachineSelectorModal } from '@/components/modals/state-machine-selector-modal';
 
 const STATUS_OPTIONS = [
     {value: 'RUNNING', label: 'Running'},
@@ -62,6 +63,7 @@ export function ExecutionFilters() {
 
     const [availableStates, setAvailableStates] = useState<StateMachineState | null>(null);
     const [loadingStates, setLoadingStates] = useState(false);
+    const [selectorOpen, setSelectorOpen] = useState(false);
 
     // Fetch available states when state machine filter changes
     useEffect(() => {
@@ -128,6 +130,10 @@ export function ExecutionFilters() {
 
     const handleStateMachineChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setPendingFilters(prev => ({ ...prev, stateMachineFilter: e.target.value }));
+    };
+
+    const handleStateMachineSelect = (stateMachineId: string, stateMachineName: string) => {
+        setPendingFilters(prev => ({ ...prev, stateMachineFilter: stateMachineId }));
     };
 
     const handleStateNameChange = (value: string) => {
@@ -251,13 +257,21 @@ export function ExecutionFilters() {
                 {/* State Machine Filter */}
                 <div className="space-y-2">
                     <label className="text-xs font-medium text-gray-600">State Machine ID</label>
-                    <div className="relative">
+                    <div className="flex gap-2">
                         <Input
-                            placeholder="Filter by State Machine ID..."
+                            placeholder="Select from list..."
                             value={pendingFilters.stateMachineFilter}
-                            onChange={handleStateMachineChange}
-                            className="pr-10"
+                            disabled
+                            className="flex-1 bg-gray-50"
                         />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setSelectorOpen(true)}
+                            title="Select from list"
+                        >
+                            <Search className="h-4 w-4" />
+                        </Button>
                     </div>
                 </div>
 
@@ -344,6 +358,12 @@ export function ExecutionFilters() {
                     </span>
                 )}
             </div>
+
+            <StateMachineSelectorModal
+                open={selectorOpen}
+                onOpenChange={setSelectorOpen}
+                onSelect={handleStateMachineSelect}
+            />
         </div>
     );
 }
