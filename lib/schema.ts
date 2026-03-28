@@ -142,3 +142,19 @@ export const messageCorrelations = pgTable('message_correlations', {
         name: 'fk_execution_message',
     }).onDelete('cascade'),
 }));
+
+// Linked Executions Table
+export const linkedExecutions = pgTable('linked_executions', {
+    id: varchar('id', { length: 255 }).notNull().primaryKey(),
+    sourceStateMachineId: varchar('source_state_machine_id', { length: 255 }).notNull(),
+    sourceExecutionId: varchar('source_execution_id', { length: 255 }).notNull(),
+    sourceStateName: varchar('source_state_name', { length: 255 }),
+    inputTransformerName: varchar('input_transformer_name', { length: 255 }),
+    targetStateMachineName: varchar('target_state_machine_name', { length: 255 }).notNull(),
+    targetExecutionId: varchar('target_execution_id', { length: 255 }).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }),
+}, (table) => ({
+    idxLinkedTargetExec: index('idx_linked_target_exec').on(table.targetExecutionId),
+    idxLinkedSourceExec: index('idx_linked_source_exec').on(table.sourceExecutionId),
+    idxLinkedSourceSm: index('idx_linked_source_sm').on(table.sourceStateMachineId),
+}));
