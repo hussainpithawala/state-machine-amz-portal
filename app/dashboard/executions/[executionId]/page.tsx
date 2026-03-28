@@ -83,7 +83,7 @@ export default function ExecutionDetailPage() {
             setLoading(true);
             setError(null);
 
-            // Get execution details
+            // Get execution details - now returns paginated list
             const executionResponse = await fetch(`/api/executions?executionId=${encodeURIComponent(executionId)}`);
 
             if (!executionResponse.ok) {
@@ -91,7 +91,14 @@ export default function ExecutionDetailPage() {
                 throw new Error(errorData.error || 'Execution not found');
             }
 
-            const execution = await executionResponse.json();
+            const executionData = await executionResponse.json();
+            
+            // Extract execution from results array (should be only one result)
+            const execution = executionData.results?.[0];
+            
+            if (!execution) {
+                throw new Error('Execution not found');
+            }
 
             // Get state history using ONLY executionId
             const historyResponse = await fetch(
@@ -238,8 +245,8 @@ export default function ExecutionDetailPage() {
                             Restart
                         </Button>
                     )}
-                    <Badge className={getStatusColor(execution.status)}>
-                        {execution.status.replace('_', ' ')}
+                    <Badge className={getStatusColor(execution.status || 'RUNNING')}>
+                        {execution.status ? execution.status.replace('_', ' ') : 'Unknown'}
                     </Badge>
                 </div>
             </div>
