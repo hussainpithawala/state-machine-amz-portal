@@ -15,10 +15,12 @@ import {
     CheckCircle2,
     XCircle,
     Heart,
+    Tag,
 } from 'lucide-react';
 import {formatDuration, formatDate} from '@/lib/utils';
 import {Skeleton} from '@/components/ui/skeleton';
 import Link from 'next/link';
+import packageJson from '@/package.json';
 
 interface ServiceHealth {
     status: 'UP' | 'DOWN';
@@ -143,9 +145,15 @@ export default function DashboardPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-                <p className="text-gray-500 mt-1">Monitor your state machine executions</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                    <p className="text-gray-500 mt-1">Monitor your state machine executions</p>
+                </div>
+                <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1">
+                    <Tag className="h-3 w-3" />
+                    <span>v{packageJson.version}</span>
+                </Badge>
             </div>
 
             {/* Stats Grid */}
