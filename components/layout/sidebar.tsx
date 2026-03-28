@@ -36,8 +36,7 @@ const navigation: NavItem[] = [
         children: [
             { name: 'SQL Executor', href: '/dashboard/tools/sql', icon: Database },
         ]
-    },
-    { name: 'Create State Machine', href: '/dashboard/state-machines/new', icon: Plus }
+    }
 ];
 
 function NavItemComponent({ item, pathname }: { item: NavItem; pathname: string | null }) {
