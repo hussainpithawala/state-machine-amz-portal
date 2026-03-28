@@ -12,7 +12,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Search, Calendar, X, Filter } from 'lucide-react';
+import { Search, Calendar, X, Filter, Clock } from 'lucide-react';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 
 const STATUS_OPTIONS = [
     {value: 'RUNNING', label: 'Running'},
@@ -34,13 +35,6 @@ const STATE_STATUS_OPTIONS = [
     {value: 'WAITING', label: 'Waiting'},
 ];
 
-const DATE_RANGE_OPTIONS = [
-    {value: 'today', label: 'Today'},
-    {value: '7d', label: 'Last 7 days'},
-    {value: '30d', label: 'Last 30 days'},
-    {value: '90d', label: 'Last 90 days'},
-];
-
 interface StateMachineState {
     allStates: string[];
     usedStates: string[];
@@ -52,26 +46,41 @@ export function ExecutionFilters() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
-    const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
-    const [dateRangeFilter, setDateRangeFilter] = useState(searchParams.get('dateRange') || '30d');
-    const [stateMachineFilter, setStateMachineFilter] = useState(searchParams.get('stateMachineId') || '');
-    const [stateNameFilter, setStateNameFilter] = useState(searchParams.get('stateName') || '');
-    const [stateStatusFilter, setStateStatusFilter] = useState(searchParams.get('stateStatus') || '');
-    
+    // Committed filter values (from URL)
+    const [committedFilters, setCommittedFilters] = useState({
+        searchQuery: searchParams.get('search') || '',
+        statusFilter: searchParams.get('status') || '',
+        startTimeFrom: searchParams.get('startTimeFrom') ? new Date(parseInt(searchParams.get('startTimeFrom')!)) : null as Date | null,
+        startTimeTo: searchParams.get('startTimeTo') ? new Date(parseInt(searchParams.get('startTimeTo')!)) : null as Date | null,
+        stateMachineFilter: searchParams.get('stateMachineId') || '',
+        stateNameFilter: searchParams.get('stateName') || '',
+        stateStatusFilter: searchParams.get('stateStatus') || '',
+    });
+
+    // Pending filter values (for form inputs)
+    const [pendingFilters, setPendingFilters] = useState(committedFilters);
+
     const [availableStates, setAvailableStates] = useState<StateMachineState | null>(null);
     const [loadingStates, setLoadingStates] = useState(false);
 
     // Fetch available states when state machine filter changes
     useEffect(() => {
-        if (stateMachineFilter) {
-            fetchAvailableStates(stateMachineFilter);
+        if (committedFilters.stateMachineFilter) {
+            fetchAvailableStates(committedFilters.stateMachineFilter);
         } else {
             setAvailableStates(null);
-            setStateNameFilter('');
-            setStateStatusFilter('');
+            setPendingFilters(prev => ({
+                ...prev,
+                stateNameFilter: '',
+                stateStatusFilter: '',
+            }));
+            setCommittedFilters(prev => ({
+                ...prev,
+                stateNameFilter: '',
+                stateStatusFilter: '',
+            }));
         }
-    }, [stateMachineFilter]);
+    }, [committedFilters.stateMachineFilter]);
 
     const fetchAvailableStates = async (stateMachineId: string) => {
         try {
@@ -91,180 +100,241 @@ export function ExecutionFilters() {
         }
     };
 
-    useEffect(() => {
+    const handleApplyFilters = () => {
+        setCommittedFilters(pendingFilters);
+
         const params = new URLSearchParams();
 
-        if (searchQuery) params.set('search', searchQuery);
-        if (statusFilter) params.set('status', statusFilter);
-        if (dateRangeFilter) params.set('dateRange', dateRangeFilter);
-        if (stateMachineFilter) params.set('stateMachineId', stateMachineFilter);
-        if (stateNameFilter) params.set('stateName', stateNameFilter);
-        if (stateStatusFilter) params.set('stateStatus', stateStatusFilter);
+        if (pendingFilters.searchQuery) params.set('search', pendingFilters.searchQuery);
+        if (pendingFilters.statusFilter) params.set('status', pendingFilters.statusFilter);
+        if (pendingFilters.startTimeFrom) params.set('startTimeFrom', Math.floor(pendingFilters.startTimeFrom.getTime() / 1000).toString());
+        if (pendingFilters.startTimeTo) params.set('startTimeTo', Math.floor(pendingFilters.startTimeTo.getTime() / 1000).toString());
+        if (pendingFilters.stateMachineFilter) params.set('stateMachineId', pendingFilters.stateMachineFilter);
+        if (pendingFilters.stateNameFilter) params.set('stateName', pendingFilters.stateNameFilter);
+        if (pendingFilters.stateStatusFilter) params.set('stateStatus', pendingFilters.stateStatusFilter);
 
         const queryString = params.toString();
         const url = `/dashboard/executions${queryString ? `?${queryString}` : ''}`;
         router.push(url);
-    }, [searchQuery, statusFilter, dateRangeFilter, stateMachineFilter, stateNameFilter, stateStatusFilter, router]);
+    };
 
-    const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchQuery(e.target.value);
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPendingFilters(prev => ({ ...prev, searchQuery: e.target.value }));
     };
 
     const handleStatusChange = (value: string) => {
-        setStatusFilter(value === 'all' ? '' : value);
-    };
-
-    const handleDateRangeChange = (value: string) => {
-        setDateRangeFilter(value);
+        setPendingFilters(prev => ({ ...prev, statusFilter: value === 'all' ? '' : value }));
     };
 
     const handleStateMachineChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setStateMachineFilter(e.target.value);
+        setPendingFilters(prev => ({ ...prev, stateMachineFilter: e.target.value }));
     };
 
     const handleStateNameChange = (value: string) => {
-        setStateNameFilter(value === 'all' ? '' : value);
+        setPendingFilters(prev => ({ ...prev, stateNameFilter: value === 'all' ? '' : value }));
     };
 
     const handleStateStatusChange = (value: string) => {
-        setStateStatusFilter(value === 'all' ? '' : value);
+        setPendingFilters(prev => ({ ...prev, stateStatusFilter: value === 'all' ? '' : value }));
+    };
+
+    const handleStartTimeFromChange = (date: Date | null | undefined) => {
+        setPendingFilters(prev => ({ ...prev, startTimeFrom: date || null }));
+    };
+
+    const handleStartTimeToChange = (date: Date | null | undefined) => {
+        setPendingFilters(prev => ({ ...prev, startTimeTo: date || null }));
     };
 
     const clearFilters = () => {
-        setSearchQuery('');
-        setStatusFilter('');
-        setDateRangeFilter('30d');
-        setStateMachineFilter('');
-        setStateNameFilter('');
-        setStateStatusFilter('');
+        const clearedFilters = {
+            searchQuery: '',
+            statusFilter: '',
+            startTimeFrom: null as Date | null,
+            startTimeTo: null as Date | null,
+            stateMachineFilter: '',
+            stateNameFilter: '',
+            stateStatusFilter: '',
+        };
+        setPendingFilters(clearedFilters);
+        setCommittedFilters(clearedFilters);
+        router.push('/dashboard/executions');
     };
 
     const hasActiveFilters = () => {
-        return searchQuery || statusFilter || stateMachineFilter || dateRangeFilter !== '30d' || stateNameFilter || stateStatusFilter;
+        return committedFilters.searchQuery ||
+            committedFilters.statusFilter ||
+            committedFilters.startTimeFrom ||
+            committedFilters.startTimeTo ||
+            committedFilters.stateMachineFilter ||
+            committedFilters.stateNameFilter ||
+            committedFilters.stateStatusFilter;
+    };
+
+    const hasPendingChanges = () => {
+        return pendingFilters.searchQuery !== committedFilters.searchQuery ||
+            pendingFilters.statusFilter !== committedFilters.statusFilter ||
+            pendingFilters.startTimeFrom !== committedFilters.startTimeFrom ||
+            pendingFilters.startTimeTo !== committedFilters.startTimeTo ||
+            pendingFilters.stateMachineFilter !== committedFilters.stateMachineFilter ||
+            pendingFilters.stateNameFilter !== committedFilters.stateNameFilter ||
+            pendingFilters.stateStatusFilter !== committedFilters.stateStatusFilter;
     };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Search */}
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"/>
-                <Input
-                    placeholder="Search by name or ID..."
-                    value={searchQuery}
-                    onChange={handleSearch}
-                    className="pl-10"
-                />
-            </div>
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Search */}
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"/>
+                    <Input
+                        placeholder="Search by name or ID..."
+                        value={pendingFilters.searchQuery}
+                        onChange={handleSearchChange}
+                        className="pl-10"
+                    />
+                </div>
 
-            {/* Status Filter */}
-            <Select
-                value={statusFilter || 'all'}
-                onValueChange={handleStatusChange}
-            >
-                <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Filter by status"/>
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    {STATUS_OPTIONS.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-
-            {/* Date Range Filter */}
-            <Select
-                value={dateRangeFilter}
-                onValueChange={handleDateRangeChange}
-            >
-                <SelectTrigger className="w-full">
-                    <Calendar className="h-4 w-4 mr-2"/>
-                    <SelectValue placeholder="Select date range"/>
-                </SelectTrigger>
-                <SelectContent>
-                    {DATE_RANGE_OPTIONS.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-
-            {/* State Machine Filter */}
-            <div className="relative">
-                <Input
-                    placeholder="Filter by State Machine ID..."
-                    value={stateMachineFilter}
-                    onChange={handleStateMachineChange}
-                    className="pr-10"
-                />
-            </div>
-
-            {/* State Name Filter (Dynamic - shown when state machine is selected) */}
-            {availableStates && (
+                {/* Status Filter */}
                 <Select
-                    value={stateNameFilter || 'all'}
-                    onValueChange={handleStateNameChange}
+                    value={pendingFilters.statusFilter || 'all'}
+                    onValueChange={handleStatusChange}
                 >
                     <SelectTrigger className="w-full">
-                        <Filter className="h-4 w-4 mr-2"/>
-                        <SelectValue placeholder="Filter by state name"/>
+                        <SelectValue placeholder="Filter by status"/>
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All States</SelectItem>
-                        {availableStates.usedStates.length > 0 ? (
-                            availableStates.usedStates.sort().map(stateName => (
-                                <SelectItem key={stateName} value={stateName}>
-                                    {stateName}
-                                </SelectItem>
-                            ))
-                        ) : (
-                            availableStates.allStates.sort().map(stateName => (
-                                <SelectItem key={stateName} value={stateName}>
-                                    {stateName}
-                                </SelectItem>
-                            ))
-                        )}
-                    </SelectContent>
-                </Select>
-            )}
-
-            {/* State Status Filter (Static - shown when state machine is selected) */}
-            {availableStates && (
-                <Select
-                    value={stateStatusFilter || 'all'}
-                    onValueChange={handleStateStatusChange}
-                >
-                    <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Filter by state status"/>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All State Statuses</SelectItem>
-                        {STATE_STATUS_OPTIONS.map(option => (
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        {STATUS_OPTIONS.map(option => (
                             <SelectItem key={option.value} value={option.value}>
                                 {option.label}
                             </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
-            )}
 
-            {/* Clear Filters Button */}
-            {hasActiveFilters() && (
-                <div className="flex items-center">
+                {/* Start Time From */}
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-600 flex items-center">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Start Time From
+                    </label>
+                    <DateTimePicker
+                        date={pendingFilters.startTimeFrom}
+                        onChange={handleStartTimeFromChange}
+                        placeholder="Pick start date & time"
+                    />
+                </div>
+
+                {/* Start Time To */}
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-600 flex items-center">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Start Time To
+                    </label>
+                    <DateTimePicker
+                        date={pendingFilters.startTimeTo}
+                        onChange={handleStartTimeToChange}
+                        placeholder="Pick end date & time"
+                    />
+                </div>
+
+                {/* State Machine Filter */}
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-600">State Machine ID</label>
+                    <div className="relative">
+                        <Input
+                            placeholder="Filter by State Machine ID..."
+                            value={pendingFilters.stateMachineFilter}
+                            onChange={handleStateMachineChange}
+                            className="pr-10"
+                        />
+                    </div>
+                </div>
+
+                {/* State Name Filter (Dynamic - shown when state machine is selected) */}
+                {availableStates && (
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-gray-600 flex items-center">
+                            <Filter className="h-3 w-3 mr-1" />
+                            State Name
+                        </label>
+                        <Select
+                            value={pendingFilters.stateNameFilter || 'all'}
+                            onValueChange={handleStateNameChange}
+                        >
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Filter by state name"/>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All States</SelectItem>
+                                {availableStates.usedStates.length > 0 ? (
+                                    availableStates.usedStates.sort().map(stateName => (
+                                        <SelectItem key={stateName} value={stateName}>
+                                            {stateName}
+                                        </SelectItem>
+                                    ))
+                                ) : (
+                                    availableStates.allStates.sort().map(stateName => (
+                                        <SelectItem key={stateName} value={stateName}>
+                                            {stateName}
+                                        </SelectItem>
+                                    ))
+                                )}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+
+                {/* State Status Filter (Static - shown when state machine is selected) */}
+                {availableStates && (
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-gray-600">State Status</label>
+                        <Select
+                            value={pendingFilters.stateStatusFilter || 'all'}
+                            onValueChange={handleStateStatusChange}
+                        >
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Filter by state status"/>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All State Statuses</SelectItem>
+                                {STATE_STATUS_OPTIONS.map(option => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+                <Button
+                    onClick={handleApplyFilters}
+                    disabled={!hasPendingChanges()}
+                >
+                    <Search className="h-4 w-4 mr-2" />
+                    Apply Filters
+                </Button>
+                {hasActiveFilters() && (
                     <Button
                         variant="outline"
-                        size="sm"
                         onClick={clearFilters}
-                        className="w-full"
                     >
                         <X className="h-4 w-4 mr-2" />
                         Clear Filters
                     </Button>
-                </div>
-            )}
+                )}
+                {hasPendingChanges() && (
+                    <span className="text-sm text-gray-500 flex items-center">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Unsaved changes
+                    </span>
+                )}
+            </div>
         </div>
     );
 }

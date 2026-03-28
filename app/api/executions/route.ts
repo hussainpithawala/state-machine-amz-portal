@@ -29,6 +29,8 @@ const executionsQuerySchema = z.object({
     startDate: z.string().optional(),
     endDate: z.string().optional(),
     dateRange: z.enum(['today', '7d', '30d', '90d']).optional(),
+    startTimeFrom: z.string().optional(), // Unix timestamp in seconds
+    startTimeTo: z.string().optional(),   // Unix timestamp in seconds
     sortBy: z.enum(['startTime', 'endTime', 'status']).optional().default('startTime'),
     order: z.enum(['asc', 'desc']).optional().default('desc'),
     executionId: z.string().optional(), // For single execution lookup
@@ -81,7 +83,16 @@ export async function GET(request: NextRequest) {
         const dateConditions: any[] = [];
         const now = new Date();
 
-        if (validated.dateRange) {
+        if (validated.startTimeFrom || validated.startTimeTo) {
+            // Use exact timestamp filters
+            if (validated.startTimeFrom) {
+                dateConditions.push(gte(executions.startTime, new Date(parseInt(validated.startTimeFrom) * 1000)));
+            }
+            if (validated.startTimeTo) {
+                dateConditions.push(lte(executions.startTime, new Date(parseInt(validated.startTimeTo) * 1000)));
+            }
+        } else if (validated.dateRange) {
+            // Use preset date range
             let startDate: Date;
             switch (validated.dateRange) {
                 case 'today':
