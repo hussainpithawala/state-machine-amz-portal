@@ -5,6 +5,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-28
+
+### Added
+- **State Machine Selector Modal**: New reusable component for selecting state machines from a paginated, searchable list
+  - `components/modals/state-machine-selector-modal.tsx` - Modal with table view, search, and pagination (20 items per page)
+  - Fetches state machines from `/api/state-machines` API endpoint
+  - Displays ID, name, and select action for each state machine
+  
+- **State Name Selector Modal**: New component for selecting states from a state machine definition
+  - `components/modals/state-name-selector-modal.tsx` - Modal showing all states defined in a state machine
+  - Fetches states from `/api/state-machines/[id]/states` API endpoint
+  - Displays state usage indicators (used/unused) and status history badges
+  - Search functionality to filter states by name
+
+- **Execution Time Range Filters**: Exact date-time range selection for execution filtering
+  - Replaced preset date range dropdown (Today, 7d, 30d, 90d) with precise date-time pickers
+  - "Start Time From" and "Start Time To" fields using `DateTimePicker` component
+  - Backend support for `startTimeFrom` and `startTimeTo` query parameters (Unix timestamps)
+
+- **Filter Submission Control**: Manual filter application instead of auto-submit
+  - New "Apply Filters" button to trigger search
+  - "Unsaved changes" indicator when filter values differ from applied filters
+  - Improved user control over filter execution timing
+
+### Changed
+- **Start Batch Execution Modal**: Enhanced UX with selector modals for read-only fields
+  - `sourceStateMachineId` field is now read-only, selectable only via `StateMachineSelectorModal`
+  - `sourceStateName` field is now read-only, selectable only via `StateNameSelectorModal` (enabled after state machine selection)
+  - Both fields display search button to open respective selector modals
+  - Consistent styling with gray background for read-only inputs
+
+- **Execution Filters**: Complete UI overhaul for improved consistency and usability
+  - Added consistent labels with icons to all filter fields:
+    - 🔍 Search
+    - Status
+    - 🕐 Start Time From
+    - 🕐 Start Time To
+    - State Machine ID
+    - 🔽 State Name (dynamic, shown when state machine selected)
+    - State Status (dynamic, shown when state machine selected)
+  - `State Machine ID` field is now read-only, populated via `StateMachineSelectorModal`
+  - Removed manual text input for State Machine ID to prevent invalid entries
+  - Refactored filter state management with `pendingFilters` and `committedFilters` separation
+
+- **Executions API**: Extended filtering capabilities
+  - Added `startTimeFrom` and `startTimeTo` query parameters (Unix timestamps in seconds)
+  - Exact timestamp filters take priority over legacy `dateRange` parameter
+  - Backward compatible with existing `dateRange`, `startDate`, `endDate` parameters
+
+### Technical
+- **Files Changed**: 5 files, +803 insertions, -191 deletions
+  - `app/api/executions/route.ts` - Extended query schema and date filtering logic
+  - `app/dashboard/executions/ExecutionFilters.tsx` - Complete refactor with new UI and state management
+  - `components/modals/start-batch-execution-modal.tsx` - Integrated selector modals
+  - `components/modals/state-machine-selector-modal.tsx` - New component
+  - `components/modals/state-name-selector-modal.tsx` - New component
+
+### User Experience Improvements
+- Prevents manual entry errors by using selector modals for ID fields
+- Provides visual feedback for unsaved filter changes
+- Enables precise time-based execution filtering
+- Improves discoverability of state machines and states through searchable lists
+- Maintains consistent label structure across all filter fields
+
 ## [1.0.9] - 2026-03-24
 
 ### Changed
