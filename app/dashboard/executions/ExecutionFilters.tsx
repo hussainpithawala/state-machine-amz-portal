@@ -49,7 +49,8 @@ export function ExecutionFilters() {
 
     // Committed filter values (from URL)
     const [committedFilters, setCommittedFilters] = useState({
-        searchQuery: searchParams.get('search') || '',
+        executionId: searchParams.get('executionId') || '',
+        executionName: searchParams.get('executionName') || '',
         statusFilter: searchParams.get('status') || '',
         startTimeFrom: searchParams.get('startTimeFrom') ? new Date(parseInt(searchParams.get('startTimeFrom')!)) : null as Date | null,
         startTimeTo: searchParams.get('startTimeTo') ? new Date(parseInt(searchParams.get('startTimeTo')!)) : null as Date | null,
@@ -107,7 +108,8 @@ export function ExecutionFilters() {
 
         const params = new URLSearchParams();
 
-        if (pendingFilters.searchQuery) params.set('search', pendingFilters.searchQuery);
+        if (pendingFilters.executionId) params.set('executionId', pendingFilters.executionId);
+        if (pendingFilters.executionName) params.set('executionName', pendingFilters.executionName);
         if (pendingFilters.statusFilter) params.set('status', pendingFilters.statusFilter);
         if (pendingFilters.startTimeFrom) params.set('startTimeFrom', Math.floor(pendingFilters.startTimeFrom.getTime() / 1000).toString());
         if (pendingFilters.startTimeTo) params.set('startTimeTo', Math.floor(pendingFilters.startTimeTo.getTime() / 1000).toString());
@@ -120,8 +122,12 @@ export function ExecutionFilters() {
         router.push(url);
     };
 
-    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setPendingFilters(prev => ({ ...prev, searchQuery: e.target.value }));
+    const handleExecutionIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPendingFilters(prev => ({ ...prev, executionId: e.target.value }));
+    };
+
+    const handleExecutionNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPendingFilters(prev => ({ ...prev, executionName: e.target.value }));
     };
 
     const handleStatusChange = (value: string) => {
@@ -154,7 +160,8 @@ export function ExecutionFilters() {
 
     const clearFilters = () => {
         const clearedFilters = {
-            searchQuery: '',
+            executionId: '',
+            executionName: '',
             statusFilter: '',
             startTimeFrom: null as Date | null,
             startTimeTo: null as Date | null,
@@ -168,7 +175,8 @@ export function ExecutionFilters() {
     };
 
     const hasActiveFilters = () => {
-        return committedFilters.searchQuery ||
+        return committedFilters.executionId ||
+            committedFilters.executionName ||
             committedFilters.statusFilter ||
             committedFilters.startTimeFrom ||
             committedFilters.startTimeTo ||
@@ -178,7 +186,8 @@ export function ExecutionFilters() {
     };
 
     const hasPendingChanges = () => {
-        return pendingFilters.searchQuery !== committedFilters.searchQuery ||
+        return pendingFilters.executionId !== committedFilters.executionId ||
+            pendingFilters.executionName !== committedFilters.executionName ||
             pendingFilters.statusFilter !== committedFilters.statusFilter ||
             pendingFilters.startTimeFrom !== committedFilters.startTimeFrom ||
             pendingFilters.startTimeTo !== committedFilters.startTimeTo ||
@@ -190,18 +199,35 @@ export function ExecutionFilters() {
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Search */}
+                {/* Execution ID */}
                 <div className="space-y-2">
                     <label className="text-xs font-medium text-gray-600 flex items-center">
                         <Search className="h-3 w-3 mr-1" />
-                        Search
+                        Execution ID
                     </label>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"/>
                         <Input
-                            placeholder="Search by name or ID..."
-                            value={pendingFilters.searchQuery}
-                            onChange={handleSearchChange}
+                            placeholder="Search by execution ID..."
+                            value={pendingFilters.executionId}
+                            onChange={handleExecutionIdChange}
+                            className="pl-10"
+                        />
+                    </div>
+                </div>
+
+                {/* Execution Name */}
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-600 flex items-center">
+                        <Search className="h-3 w-3 mr-1" />
+                        Execution Name
+                    </label>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"/>
+                        <Input
+                            placeholder="Search by execution name..."
+                            value={pendingFilters.executionName}
+                            onChange={handleExecutionNameChange}
                             className="pl-10"
                         />
                     </div>

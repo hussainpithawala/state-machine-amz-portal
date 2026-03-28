@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {db} from '@/lib/db';
-import {executions, stateHistory} from '@/lib/schema'; // ✅ Added stateHistory import
+import {executions, stateHistory} from '@/lib/schema';
 import {
     eq,
     sql,
@@ -11,10 +11,9 @@ import {
     lte,
     desc,
     asc,
-    exists
+    exists,
 } from 'drizzle-orm';
 import {z} from 'zod';
-import {subDays, startOfDay, endOfDay} from 'date-fns';
 
 type ExecutionStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'TIMED_OUT' | 'ABORTED' | 'PAUSED';
 type StateHistoryStatus = 'SUCCEEDED' | 'FAILED' | 'RUNNING' | 'CANCELLED' | 'TIMED_OUT' | 'RETRYING' | 'WAITING';
@@ -25,15 +24,12 @@ const executionsQuerySchema = z.object({
     pageSize: z.string().optional().default('25'),
     stateMachineId: z.string().optional(),
     status: z.enum(['RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'TIMED_OUT', 'ABORTED', 'PAUSED']).optional(),
-    search: z.string().optional(),
-    startDate: z.string().optional(),
-    endDate: z.string().optional(),
-    dateRange: z.enum(['today', '7d', '30d', '90d']).optional(),
+    executionId: z.string().optional(), // Filter by execution ID
+    executionName: z.string().optional(), // Filter by execution name
     startTimeFrom: z.string().optional(), // Unix timestamp in seconds
     startTimeTo: z.string().optional(),   // Unix timestamp in seconds
     sortBy: z.enum(['startTime', 'endTime', 'status']).optional().default('startTime'),
     order: z.enum(['asc', 'desc']).optional().default('desc'),
-    executionId: z.string().optional(), // For single execution lookup
     stateName: z.string().optional(), // Filter by current state name
     stateStatus: z.enum(['SUCCEEDED', 'FAILED', 'RUNNING', 'CANCELLED', 'TIMED_OUT', 'RETRYING', 'WAITING']).optional(), // Filter by state status
 });
@@ -43,45 +39,13 @@ export async function GET(request: NextRequest) {
         const {searchParams} = new URL(request.url);
         const validated = executionsQuerySchema.parse(Object.fromEntries(searchParams));
 
-        // Handle single execution lookup
-        if (validated.executionId) {
-            const [execution] = await db
-                .select()
-                .from(executions)
-                .where(eq(executions.executionId, validated.executionId))
-                .orderBy(desc(executions.startTime))
-                .limit(1);
-
-            if (!execution) {
-                return NextResponse.json(
-                    { error: `Execution with ID "${validated.executionId}" not found` },
-                    { status: 404 }
-                );
-            }
-
-            // Get the execution_start_time from state_history
-            const [firstState] = await db
-                .select({ executionStartTime: stateHistory.executionStartTime })
-                .from(stateHistory)
-                .where(eq(stateHistory.executionId, validated.executionId))
-                .orderBy(asc(stateHistory.sequenceNumber))
-                .limit(1);
-
-            // Return execution with the correct execution_start_time
-            return NextResponse.json({
-                ...execution,
-                executionStartTime: firstState?.executionStartTime || execution.startTime
-            });
-        }
-
-        // Handle list view (when no executionId is provided)
+        // Handle list view
         const page = parseInt(validated.page);
         const pageSize = parseInt(validated.pageSize);
         const offset = (page - 1) * pageSize;
 
         // Build date range filters
         const dateConditions: any[] = [];
-        const now = new Date();
 
         if (validated.startTimeFrom || validated.startTimeTo) {
             // Use exact timestamp filters
@@ -90,33 +54,6 @@ export async function GET(request: NextRequest) {
             }
             if (validated.startTimeTo) {
                 dateConditions.push(lte(executions.startTime, new Date(parseInt(validated.startTimeTo) * 1000)));
-            }
-        } else if (validated.dateRange) {
-            // Use preset date range
-            let startDate: Date;
-            switch (validated.dateRange) {
-                case 'today':
-                    startDate = startOfDay(now);
-                    break;
-                case '7d':
-                    startDate = subDays(now, 7);
-                    break;
-                case '30d':
-                    startDate = subDays(now, 30);
-                    break;
-                case '90d':
-                    startDate = subDays(now, 90);
-                    break;
-                default:
-                    startDate = subDays(now, 30);
-            }
-            dateConditions.push(gte(executions.startTime, startDate));
-        } else {
-            if (validated.startDate) {
-                dateConditions.push(gte(executions.startTime, new Date(validated.startDate)));
-            }
-            if (validated.endDate) {
-                dateConditions.push(lte(executions.startTime, new Date(validated.endDate)));
             }
         }
 
@@ -128,12 +65,18 @@ export async function GET(request: NextRequest) {
         }
 
         if (validated.status) {
-            whereConditions.push(eq(executions.status, validated.status)); // Now types match
+            whereConditions.push(eq(executions.status, validated.status));
         }
 
-        if (validated.search) {
+        // Filter by execution ID (exact match)
+        if (validated.executionId) {
+            whereConditions.push(eq(executions.executionId, validated.executionId));
+        }
+
+        // Filter by execution name (partial match)
+        if (validated.executionName) {
             whereConditions.push(
-                like(executions.name, `%${validated.search}%`)
+                like(executions.name, `%${validated.executionName}%`)
             );
         }
 
@@ -195,7 +138,7 @@ export async function GET(request: NextRequest) {
             .offset(offset);
 
         return NextResponse.json({
-            results,                 // ✅ Just 'results' (not wrapped in 'data')
+            results,
             pagination: {
                 page,
                 pageSize,
@@ -205,7 +148,10 @@ export async function GET(request: NextRequest) {
             filters: {
                 stateMachineId: validated.stateMachineId,
                 status: validated.status,
-                dateRange: validated.dateRange,
+                executionId: validated.executionId,
+                executionName: validated.executionName,
+                startTimeFrom: validated.startTimeFrom,
+                startTimeTo: validated.startTimeTo,
                 stateName: validated.stateName,
                 stateStatus: validated.stateStatus,
             },
