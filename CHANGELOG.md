@@ -5,6 +5,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2026-03-29
+
+### Added
+- **Linked Executions Page**: New page to track execution links between state machines
+  - `/dashboard/linked-executions` - Full-featured list view with filtering and pagination
+  - Filter by source/target state machine, execution ID, state name, transformer name, and date range
+  - Paginated results (25 items per page) with sortable columns
+  - Direct links to source/target executions and source state machine
+  - API endpoint `/api/linked-executions` with comprehensive filtering support
+
+- **Bulk Deletion**: Select and delete multiple linked executions at once
+  - Individual row checkboxes for selection
+  - "Select All" button to select/deselect all items on current page
+  - "Delete Selected" button with count indicator
+  - Confirmation dialog showing number of records to be deleted
+  - Toast notifications for success/error feedback
+
+- **Filter-Based Deletion**: Delete all linked executions matching current filters
+  - "Delete All Filtered" button in filter section
+  - Fetches and displays count of matching records before confirmation
+  - Single-click deletion of all filtered records
+  - Auto-clears filters after successful deletion
+
+- **SQL Executor Tool**: New database query tool for advanced users
+  - `/dashboard/tools/sql` - Full-page SQL query executor
+  - Large textarea for writing SQL queries with font size selector (12px-18px)
+  - Execute button with loading state and execution duration display
+  - Results displayed in scrollable table with row count
+  - Export results to CSV functionality
+  - Saved queries panel with localStorage persistence
+  - Format SQL button for basic query formatting
+  - Sample queries for quick start (6 predefined queries)
+  - Security: Blocks dangerous operations (DROP DATABASE, TRUNCATE, etc.)
+  - API endpoint `/api/sql-execute` for query execution
+
+- **UI Components**:
+  - `components/ui/checkbox.tsx` - Reusable Checkbox component using Radix UI
+
+- **Database Schema**:
+  - `lib/schema.ts` - Added `linkedExecutions` table definition with indexes
+    - `idx_linked_target_exec` - Index on target_execution_id
+    - `idx_linked_source_exec` - Index on source_execution_id
+    - `idx_linked_source_sm` - Index on source_state_machine_id
+
+### Changed
+- **Navigation**: Reorganized sidebar navigation structure
+  - Added collapsible "Tools" section for utility pages
+  - Moved "SQL Executor" under Tools section
+  - Removed "Create State Machine" from main navigation (accessible via State Machines page)
+
+- **Validation**: Removed upper limit constraints for better flexibility
+  - `start-batch-execution-modal.tsx` - Removed `max="1000"` limit from execution filter limit field
+  - `launch-batch/route.ts` - Removed `.max(100000)` from `executionFilter.limit` and `microBatchSize`
+  - `launch-bulk/route.ts` - Removed `.max(100)` from `concurrency`
+  - `start-bulk-execution-modal.tsx` - Removed `max="100"` from concurrency field
+  - All fields now only validate minimum value (must be >= 1)
+
+### Technical
+- **Files Changed**: 12 files
+  - `lib/schema.ts` - Added linkedExecutions table schema
+  - `types/database.ts` - Added LinkedExecution interface
+  - `app/api/linked-executions/route.ts` - New API endpoint with GET/DELETE support
+  - `app/api/sql-execute/route.ts` - New API endpoint for SQL execution
+  - `app/dashboard/linked-executions/page.tsx` - New page component
+  - `app/dashboard/linked-executions/LinkedExecutionsFilters.tsx` - Filter component with delete functionality
+  - `app/dashboard/linked-executions/LinkedExecutionsList.tsx` - List component with selection
+  - `app/dashboard/tools/sql/page.tsx` - SQL Executor page
+  - `components/ui/checkbox.tsx` - New Checkbox component
+  - `components/layout/sidebar.tsx` - Added Tools section with collapsible navigation
+  - `components/layout/header.tsx` - Removed SQL Modal from header
+  - `components/modals/sql-modal.tsx` - Removed (replaced by full page)
+
+### User Experience Improvements
+- Linked executions now easily accessible from main navigation
+- Bulk operations reduce manual effort for common tasks
+- Confirmation dialogs prevent accidental deletions
+- SQL Executor provides powerful database access for debugging and analysis
+- Removed arbitrary limits allow users to configure batch sizes based on their needs
+
 ## [1.1.2] - 2026-03-28
 
 ### Fixed
