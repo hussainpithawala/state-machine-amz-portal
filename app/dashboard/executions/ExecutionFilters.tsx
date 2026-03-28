@@ -185,33 +185,42 @@ export function ExecutionFilters() {
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Search */}
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"/>
-                    <Input
-                        placeholder="Search by name or ID..."
-                        value={pendingFilters.searchQuery}
-                        onChange={handleSearchChange}
-                        className="pl-10"
-                    />
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-600 flex items-center">
+                        <Search className="h-3 w-3 mr-1" />
+                        Search
+                    </label>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"/>
+                        <Input
+                            placeholder="Search by name or ID..."
+                            value={pendingFilters.searchQuery}
+                            onChange={handleSearchChange}
+                            className="pl-10"
+                        />
+                    </div>
                 </div>
 
                 {/* Status Filter */}
-                <Select
-                    value={pendingFilters.statusFilter || 'all'}
-                    onValueChange={handleStatusChange}
-                >
-                    <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Filter by status"/>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        {STATUS_OPTIONS.map(option => (
-                            <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-600">Status</label>
+                    <Select
+                        value={pendingFilters.statusFilter || 'all'}
+                        onValueChange={handleStatusChange}
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Filter by status"/>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            {STATUS_OPTIONS.map(option => (
+                                <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
 
                 {/* Start Time From */}
                 <div className="space-y-2">
