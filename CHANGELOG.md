@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-03-28
+
+### Fixed
+- **Execution Detail Page**: Fixed crash when loading execution details due to API response format change
+  - Updated execution detail page to extract execution from paginated `results` array
+  - Added null safety checks for `execution.status` with fallback to "Unknown"
+  - Added default status fallback for `getStatusColor()` function
+  - Resolves issue where execution detail page showed `Cannot read property 'replace' of undefined`
+
+### Technical
+- **Files Changed**: 1 file
+  - `app/dashboard/executions/[executionId]/page.tsx` - Handle paginated API response
+
+### Root Cause
+- Previous API change (v1.1.1) modified `/api/executions` to always return paginated list format
+- Execution detail page was still expecting direct execution object
+- Fix extracts execution from `results[0]` and adds defensive null checks
+
 ## [1.1.1] - 2026-03-28
 
 ### Added
