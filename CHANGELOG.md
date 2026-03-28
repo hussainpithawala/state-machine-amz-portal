@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-03-28
+
+### Added
+- **Dashboard Version Badge**: Display current application version in dashboard header
+  - Version badge with tag icon in top-right corner of dashboard page
+  - Automatically reads version from `package.json`
+  - Helps users quickly identify the current release version
+
+### Changed
+- **Execution Filters**: Separated search into distinct Execution ID and Execution Name fields
+  - **Execution ID**: Exact match filter for searching by execution ID
+  - **Execution Name**: Partial match (LIKE) filter for searching by execution name
+  - Replaced single generic "Search" field with two purpose-specific inputs
+  - Both fields have consistent labeled layout with search icons
+
+- **Executions API**: Simplified and fixed execution filtering logic
+  - Removed single execution lookup from list endpoint (moved to detail endpoint)
+  - Fixed execution ID filter to work correctly in list view (exact match with `eq()`)
+  - Execution name filter uses partial match with `like()` operator
+  - Removed unused legacy date parameters (`dateRange`, `startDate`, `endDate`)
+  - Removed unused `date-fns` import
+  - API now consistently returns paginated list format for all filter combinations
+
+### Fixed
+- **Execution ID Search**: Fixed execution ID filter not working in list view
+  - Previous implementation incorrectly returned single object instead of paginated list
+  - Now properly filters executions list by exact execution ID match
+  - Both execution ID and execution name filters work independently and together
+
+### Technical
+- **Files Changed**: 3 files, +68 insertions, -88 deletions
+  - `app/api/executions/route.ts` - Simplified filtering logic, removed single lookup
+  - `app/dashboard/executions/ExecutionFilters.tsx` - Split search into ID and name fields
+  - `app/dashboard/page.tsx` - Added version badge display
+
+### API Changes
+| Parameter | Old Behavior | New Behavior |
+|-----------|--------------|--------------|
+| `search` | Partial match on name | **Removed** |
+| `executionId` | Single execution lookup | List filter (exact match) |
+| `executionName` | — | New: List filter (partial match) |
+| `dateRange` | Preset ranges (today, 7d, 30d, 90d) | **Removed** (use `startTimeFrom`/`startTimeTo`) |
+| `startDate`/`endDate` | Legacy date filters | **Removed** (use `startTimeFrom`/`startTimeTo`) |
+
 ## [1.1.0] - 2026-03-28
 
 ### Added
