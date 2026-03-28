@@ -6,17 +6,29 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     Link as LinkIcon,
     ExternalLink,
     ChevronLeft,
     ChevronRight,
-    Filter
+    Filter,
+    Trash2,
+    CheckCheck
 } from 'lucide-react';
 import { LinkedExecution } from '@/types/database';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 interface LinkedExecutionsListProps {
     searchParams: {
@@ -44,6 +56,9 @@ export function LinkedExecutionsList({ searchParams }: LinkedExecutionsListProps
     const [pageSize] = useState(25);
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
     useEffect(() => {
         fetchLinkedExecutions();
@@ -53,6 +68,11 @@ export function LinkedExecutionsList({ searchParams }: LinkedExecutionsListProps
         const pageFromUrl = parseInt(currentSearchParams.get('page') || searchParams.page || '1', 10);
         setCurrentPage(Number.isNaN(pageFromUrl) || pageFromUrl < 1 ? 1 : pageFromUrl);
     }, [currentSearchParams, searchParams.page]);
+
+    // Clear selection when filters or page changes
+    useEffect(() => {
+        setSelectedIds(new Set());
+    }, [currentSearchParams]);
 
     const fetchLinkedExecutions = async () => {
         try {
@@ -91,6 +111,65 @@ export function LinkedExecutionsList({ searchParams }: LinkedExecutionsListProps
             const params = new URLSearchParams(currentSearchParams.toString());
             params.set('page', newPage.toString());
             router.push(`/dashboard/linked-executions?${params}`);
+        }
+    };
+
+    const handleSelectAll = () => {
+        if (selectedIds.size === linkedExecutions.length) {
+            // Deselect all
+            setSelectedIds(new Set());
+        } else {
+            // Select all on current page
+            const allIds = new Set(linkedExecutions.map(item => item.id));
+            setSelectedIds(allIds);
+        }
+    };
+
+    const handleSelectOne = (id: string) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const handleDeleteSelected = async () => {
+        setShowConfirmDialog(false);
+        setIsDeleting(true);
+
+        try {
+            const response = await fetch('/api/linked-executions', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ids: Array.from(selectedIds),
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP ${response.status}: Failed to delete linked executions`);
+            }
+
+            const result = await response.json();
+            
+            toast.success('Linked executions deleted', {
+                description: `${result.deletedCount} record(s) deleted successfully`,
+            });
+
+            setSelectedIds(new Set());
+            fetchLinkedExecutions();
+        } catch (err) {
+            console.error('Error deleting linked executions:', err);
+            toast.error('Failed to delete linked executions', {
+                description: err instanceof Error ? err.message : 'An unknown error occurred',
+            });
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -173,16 +252,45 @@ export function LinkedExecutionsList({ searchParams }: LinkedExecutionsListProps
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center">
-                    <LinkIcon className="h-5 w-5 mr-2 text-blue-500"/>
-                    Linked Executions List
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center">
+                        <LinkIcon className="h-5 w-5 mr-2 text-blue-500"/>
+                        Linked Executions List
+                    </CardTitle>
+                    {selectedIds.size > 0 && (
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleSelectAll}
+                            >
+                                <CheckCheck className="h-4 w-4 mr-2"/>
+                                {selectedIds.size === linkedExecutions.length ? 'Deselect All' : `Select All (${linkedExecutions.length})`}
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setShowConfirmDialog(true)}
+                                disabled={isDeleting}
+                            >
+                                <Trash2 className="h-4 w-4 mr-2"/>
+                                Delete Selected ({selectedIds.size})
+                            </Button>
+                        </div>
+                    )}
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead className="w-12">
+                                    <Checkbox
+                                        checked={selectedIds.size === linkedExecutions.length && linkedExecutions.length > 0}
+                                        onCheckedChange={handleSelectAll}
+                                    />
+                                </TableHead>
                                 <TableHead>Source State Machine</TableHead>
                                 <TableHead>Source Execution</TableHead>
                                 <TableHead>Source State</TableHead>
@@ -195,7 +303,13 @@ export function LinkedExecutionsList({ searchParams }: LinkedExecutionsListProps
                         </TableHeader>
                         <TableBody>
                             {linkedExecutions.map((linked) => (
-                                <TableRow key={linked.id} className="hover:bg-gray-50">
+                                <TableRow key={linked.id} className={selectedIds.has(linked.id) ? 'bg-blue-50 hover:bg-blue-50' : 'hover:bg-gray-50'}>
+                                    <TableCell>
+                                        <Checkbox
+                                            checked={selectedIds.has(linked.id)}
+                                            onCheckedChange={() => handleSelectOne(linked.id)}
+                                        />
+                                    </TableCell>
                                     <TableCell className="font-medium max-w-xs truncate">
                                         <Link
                                             href={`/dashboard/state-machines/${encodeURIComponent(linked.sourceStateMachineId)}`}
@@ -284,6 +398,45 @@ export function LinkedExecutionsList({ searchParams }: LinkedExecutionsListProps
                     </div>
                 </div>
             </CardContent>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Linked Executions</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete {selectedIds.size} linked execution{selectedIds.size !== 1 ? 's' : ''}? 
+                            This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowConfirmDialog(false)}
+                            disabled={isDeleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteSelected}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <span className="animate-spin mr-2">⏳</span>
+                                    Deleting...
+                                </>
+                            ) : (
+                                <>
+                                    <Trash2 className="h-4 w-4 mr-2"/>
+                                    Delete
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }

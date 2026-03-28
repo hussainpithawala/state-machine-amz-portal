@@ -12,9 +12,18 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Search, Calendar, X, Clock } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Search, Calendar, X, Clock, Trash2 } from 'lucide-react';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { StateMachineSelectorModal } from '@/components/modals/state-machine-selector-modal';
+import { toast } from 'sonner';
 
 export function LinkedExecutionsFilters() {
     const router = useRouter();
@@ -36,6 +45,9 @@ export function LinkedExecutionsFilters() {
     const [pendingFilters, setPendingFilters] = useState(committedFilters);
 
     const [selectorOpen, setSelectorOpen] = useState(false);
+    const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [filteredCount, setFilteredCount] = useState<number | null>(null);
 
     const handleApplyFilters = () => {
         setCommittedFilters(pendingFilters);
@@ -128,6 +140,95 @@ export function LinkedExecutionsFilters() {
             pendingFilters.targetExecutionId !== committedFilters.targetExecutionId ||
             pendingFilters.createdAtFrom !== committedFilters.createdAtFrom ||
             pendingFilters.createdAtTo !== committedFilters.createdAtTo;
+    };
+
+    const fetchFilteredCount = async (): Promise<number> => {
+        const params = new URLSearchParams();
+
+        if (committedFilters.sourceStateMachineId) params.set('sourceStateMachineId', committedFilters.sourceStateMachineId);
+        if (committedFilters.sourceExecutionId) params.set('sourceExecutionId', committedFilters.sourceExecutionId);
+        if (committedFilters.sourceStateName) params.set('sourceStateName', committedFilters.sourceStateName);
+        if (committedFilters.inputTransformerName) params.set('inputTransformerName', committedFilters.inputTransformerName);
+        if (committedFilters.targetStateMachineName) params.set('targetStateMachineName', committedFilters.targetStateMachineName);
+        if (committedFilters.targetExecutionId) params.set('targetExecutionId', committedFilters.targetExecutionId);
+        if (committedFilters.createdAtFrom) params.set('createdAtFrom', Math.floor(committedFilters.createdAtFrom.getTime() / 1000).toString());
+        if (committedFilters.createdAtTo) params.set('createdAtTo', Math.floor(committedFilters.createdAtTo.getTime() / 1000).toString());
+
+        const response = await fetch(`/api/linked-executions?${params}&page=1&pageSize=1`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch filtered count');
+        }
+        const data = await response.json();
+        return data.pagination?.total || 0;
+    };
+
+    const handleDeleteAllFiltered = async () => {
+        setShowDeleteConfirmDialog(false);
+        setIsDeleting(true);
+
+        try {
+            const body: Record<string, any> = {
+                deleteByFilter: true,
+            };
+
+            if (committedFilters.sourceStateMachineId) body.sourceStateMachineId = committedFilters.sourceStateMachineId;
+            if (committedFilters.sourceExecutionId) body.sourceExecutionId = committedFilters.sourceExecutionId;
+            if (committedFilters.sourceStateName) body.sourceStateName = committedFilters.sourceStateName;
+            if (committedFilters.inputTransformerName) body.inputTransformerName = committedFilters.inputTransformerName;
+            if (committedFilters.targetStateMachineName) body.targetStateMachineName = committedFilters.targetStateMachineName;
+            if (committedFilters.targetExecutionId) body.targetExecutionId = committedFilters.targetExecutionId;
+            if (committedFilters.createdAtFrom) body.createdAtFrom = Math.floor(committedFilters.createdAtFrom.getTime() / 1000).toString();
+            if (committedFilters.createdAtTo) body.createdAtTo = Math.floor(committedFilters.createdAtTo.getTime() / 1000).toString();
+
+            const response = await fetch('/api/linked-executions', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP ${response.status}: Failed to delete linked executions`);
+            }
+
+            const result = await response.json();
+
+            toast.success('Linked executions deleted', {
+                description: `${result.deletedCount} record(s) deleted successfully`,
+            });
+
+            // Clear filters and refresh
+            clearFilters();
+        } catch (err) {
+            console.error('Error deleting linked executions:', err);
+            toast.error('Failed to delete linked executions', {
+                description: err instanceof Error ? err.message : 'An unknown error occurred',
+            });
+        } finally {
+            setIsDeleting(false);
+            setFilteredCount(null);
+        }
+    };
+
+    const handleOpenDeleteDialog = async () => {
+        try {
+            const count = await fetchFilteredCount();
+            setFilteredCount(count);
+            if (count === 0) {
+                toast.info('No records to delete', {
+                    description: 'The current filters match 0 linked executions',
+                });
+                return;
+            }
+            setShowDeleteConfirmDialog(true);
+        } catch (err) {
+            console.error('Error fetching filtered count:', err);
+            toast.error('Failed to fetch record count', {
+                description: err instanceof Error ? err.message : 'An unknown error occurred',
+            });
+        }
     };
 
     return (
@@ -279,13 +380,23 @@ export function LinkedExecutionsFilters() {
                     Apply Filters
                 </Button>
                 {hasActiveFilters() && (
-                    <Button
-                        variant="outline"
-                        onClick={clearFilters}
-                    >
-                        <X className="h-4 w-4 mr-2" />
-                        Clear Filters
-                    </Button>
+                    <>
+                        <Button
+                            variant="destructive"
+                            onClick={handleOpenDeleteDialog}
+                            disabled={isDeleting}
+                        >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete All Filtered
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={clearFilters}
+                        >
+                            <X className="h-4 w-4 mr-2" />
+                            Clear Filters
+                        </Button>
+                    </>
                 )}
                 {hasPendingChanges() && (
                     <span className="text-sm text-gray-500 flex items-center">
@@ -294,6 +405,45 @@ export function LinkedExecutionsFilters() {
                     </span>
                 )}
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete All Filtered Linked Executions</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete all {filteredCount !== null ? filteredCount : ''} linked execution{filteredCount !== 1 ? 's' : ''} matching the current filters? 
+                            This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowDeleteConfirmDialog(false)}
+                            disabled={isDeleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteAllFiltered}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <span className="animate-spin mr-2">⏳</span>
+                                    Deleting...
+                                </>
+                            ) : (
+                                <>
+                                    <Trash2 className="h-4 w-4 mr-2"/>
+                                    Delete All
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <StateMachineSelectorModal
                 open={selectorOpen}
