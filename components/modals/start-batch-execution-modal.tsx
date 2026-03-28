@@ -251,11 +251,10 @@ export function StartBatchExecutionModal({
                                         id="sourceStateMachineId"
                                         name="sourceStateMachineId"
                                         value={formData.sourceStateMachineId}
-                                        onChange={handleChange}
-                                        placeholder="state-machine-A"
-                                        disabled={loading}
+                                        disabled
+                                        placeholder="Select from list..."
                                         required
-                                        className="flex-1"
+                                        className="flex-1 bg-gray-50"
                                     />
                                     <Button
                                         type="button"
