@@ -19,10 +19,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Filter, Layers, Loader2, Play, StopCircle, Zap, GitBranch } from "lucide-react";
+import { Filter, Layers, Loader2, Play, StopCircle, Zap, GitBranch, Search } from "lucide-react";
 import { toast } from 'sonner';
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { TransformerSelect } from '@/components/ui/transformer-select';
+import { StateMachineSelectorModal } from './state-machine-selector-modal';
 
 interface StartBatchExecutionModalProps {
     stateMachineId: string;
@@ -38,6 +39,7 @@ export function StartBatchExecutionModal({
                                              disabled = false
                                          }: StartBatchExecutionModalProps) {
     const [open, setOpen] = useState(false);
+    const [selectorOpen, setSelectorOpen] = useState(false);
     const [formData, setFormData] = useState({
         sourceStateMachineId: '',
         sourceStateName: '',
@@ -73,6 +75,11 @@ export function StartBatchExecutionModal({
             ...prev,
             [name]: date
         }));
+        setError(null);
+    };
+
+    const handleStateMachineSelect = (stateMachineId: string, stateMachineName: string) => {
+        setFormData(prev => ({ ...prev, sourceStateMachineId: stateMachineId }));
         setError(null);
     };
 
@@ -209,24 +216,25 @@ export function StartBatchExecutionModal({
     };
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline" disabled={disabled}>
-                    <Layers className="h-4 w-4 mr-2" />
-                    Start Batch Execution
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
-                <DialogHeader>
-                    <DialogTitle>Start Batch Execution</DialogTitle>
-                    <DialogDescription>
-                        Launch multiple executions for state machine: <strong>{stateMachineName}</strong>
-                    </DialogDescription>
-                </DialogHeader>
+        <>
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" disabled={disabled}>
+                        <Layers className="h-4 w-4 mr-2" />
+                        Start Batch Execution
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+                    <DialogHeader>
+                        <DialogTitle>Start Batch Execution</DialogTitle>
+                        <DialogDescription>
+                            Launch multiple executions for state machine: <strong>{stateMachineName}</strong>
+                        </DialogDescription>
+                    </DialogHeader>
 
-                {/* ✅ FORM WRAPS THE SCROLLABLE CONTENT */}
-                <form onSubmit={handleSubmit} className="flex flex-col h-full">
-                    <div className="overflow-y-auto max-h-[70vh] pr-2 flex-1">
+                    {/* ✅ FORM WRAPS THE SCROLLABLE CONTENT */}
+                    <form onSubmit={handleSubmit} className="flex flex-col h-full">
+                        <div className="overflow-y-auto max-h-[70vh] pr-2 flex-1">
                         {/* Source Filter Section */}
                         <div className="space-y-4 p-4 bg-blue-50 rounded-lg">
                             <h3 className="text-sm font-medium text-blue-700 flex items-center">
@@ -238,15 +246,27 @@ export function StartBatchExecutionModal({
                                 <label htmlFor="sourceStateMachineId" className="text-sm font-medium">
                                     Source State Machine ID *
                                 </label>
-                                <Input
-                                    id="sourceStateMachineId"
-                                    name="sourceStateMachineId"
-                                    value={formData.sourceStateMachineId}
-                                    onChange={handleChange}
-                                    placeholder="state-machine-A"
-                                    disabled={loading}
-                                    required
-                                />
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="sourceStateMachineId"
+                                        name="sourceStateMachineId"
+                                        value={formData.sourceStateMachineId}
+                                        onChange={handleChange}
+                                        placeholder="state-machine-A"
+                                        disabled={loading}
+                                        required
+                                        className="flex-1"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setSelectorOpen(true)}
+                                        disabled={loading}
+                                        title="Select from list"
+                                    >
+                                        <Search className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
 
                             <div className="space-y-2">
@@ -514,5 +534,12 @@ export function StartBatchExecutionModal({
                 </form>
             </DialogContent>
         </Dialog>
+        
+        <StateMachineSelectorModal
+            open={selectorOpen}
+            onOpenChange={setSelectorOpen}
+            onSelect={handleStateMachineSelect}
+        />
+        </>
     );
 }
