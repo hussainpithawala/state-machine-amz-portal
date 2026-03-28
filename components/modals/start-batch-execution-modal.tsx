@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { TransformerSelect } from '@/components/ui/transformer-select';
 import { StateMachineSelectorModal } from './state-machine-selector-modal';
+import { StateNameSelectorModal } from './state-name-selector-modal';
 
 interface StartBatchExecutionModalProps {
     stateMachineId: string;
@@ -40,6 +41,7 @@ export function StartBatchExecutionModal({
                                          }: StartBatchExecutionModalProps) {
     const [open, setOpen] = useState(false);
     const [selectorOpen, setSelectorOpen] = useState(false);
+    const [stateNameSelectorOpen, setStateNameSelectorOpen] = useState(false);
     const [formData, setFormData] = useState({
         sourceStateMachineId: '',
         sourceStateName: '',
@@ -80,6 +82,11 @@ export function StartBatchExecutionModal({
 
     const handleStateMachineSelect = (stateMachineId: string, stateMachineName: string) => {
         setFormData(prev => ({ ...prev, sourceStateMachineId: stateMachineId }));
+        setError(null);
+    };
+
+    const handleStateNameSelect = (stateName: string) => {
+        setFormData(prev => ({ ...prev, sourceStateName: stateName }));
         setError(null);
     };
 
@@ -272,14 +279,25 @@ export function StartBatchExecutionModal({
                                 <label htmlFor="sourceStateName" className="text-sm font-medium">
                                     Source State Name (Optional)
                                 </label>
-                                <Input
-                                    id="sourceStateName"
-                                    name="sourceStateName"
-                                    value={formData.sourceStateName}
-                                    onChange={handleChange}
-                                    placeholder="IngestData"
-                                    disabled={loading}
-                                />
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="sourceStateName"
+                                        name="sourceStateName"
+                                        value={formData.sourceStateName}
+                                        disabled
+                                        placeholder="Select from list..."
+                                        className="flex-1 bg-gray-50"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setStateNameSelectorOpen(true)}
+                                        disabled={loading || !formData.sourceStateMachineId}
+                                        title="Select from list"
+                                    >
+                                        <Search className="h-4 w-4" />
+                                    </Button>
+                                </div>
                                 <p className="text-xs text-gray-500">
                                     Specify the state name from which to resume execution
                                 </p>
@@ -538,6 +556,13 @@ export function StartBatchExecutionModal({
             open={selectorOpen}
             onOpenChange={setSelectorOpen}
             onSelect={handleStateMachineSelect}
+        />
+        
+        <StateNameSelectorModal
+            open={stateNameSelectorOpen}
+            onOpenChange={setStateNameSelectorOpen}
+            onSelect={handleStateNameSelect}
+            stateMachineId={formData.sourceStateMachineId}
         />
         </>
     );
