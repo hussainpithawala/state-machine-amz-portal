@@ -71,3 +71,14 @@ export interface StateHistoryEntry {
     metadata: Record<string, any>;
     createdAt: Date;
 }
+
+export interface LinkedExecution {
+    id: string;
+    sourceStateMachineId: string;
+    sourceExecutionId: string;
+    sourceStateName?: string;
+    inputTransformerName?: string;
+    targetStateMachineName: string;
+    targetExecutionId: string;
+    createdAt: string;
+}
