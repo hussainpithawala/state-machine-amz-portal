@@ -5,7 +5,7 @@ import { z } from 'zod';
 const launchBulkExecutionSchema = z.object({
     stateMachineId: z.string().min(1, 'State Machine ID is required'),
     namePrefix: z.string().min(1, 'Name prefix is required'),
-    concurrency: z.number().int().min(1).max(100).optional().default(10),
+    concurrency: z.number().int().min(1).optional().default(10),
     mode: z.enum(['concurrent', 'sequential']).optional().default('concurrent'),
     stopOnError: z.boolean().optional().default(false),
     inputs: z.array(z.any()).min(1, 'At least one input is required'),

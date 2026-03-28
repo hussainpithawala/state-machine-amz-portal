@@ -129,8 +129,8 @@ export function StartBatchExecutionModal({
             return;
         }
 
-        if (isNaN(limit) || limit < 1 || limit > 1000) {
-            setError('Limit must be between 1 and 1000');
+        if (isNaN(limit) || limit < 1) {
+            setError('Limit must be at least 1');
             return;
         }
 
@@ -351,7 +351,6 @@ export function StartBatchExecutionModal({
                                         onChange={handleChange}
                                         placeholder="10"
                                         min="1"
-                                        max="1000"
                                         disabled={loading}
                                     />
                                 </div>

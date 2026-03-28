@@ -135,8 +135,8 @@ export function StartBulkExecutionModal({
         const pauseThreshold = parseFloat(formData.pauseThreshold);
         const timeoutSeconds = parseInt(formData.timeoutSeconds);
 
-        if (isNaN(concurrency) || concurrency < 1 || concurrency > 100) {
-            setError('Concurrency must be between 1 and 100');
+        if (isNaN(concurrency) || concurrency < 1) {
+            setError('Concurrency must be at least 1');
             return;
         }
 
@@ -373,7 +373,6 @@ export function StartBulkExecutionModal({
                                         onChange={handleChange}
                                         placeholder="10"
                                         min="1"
-                                        max="100"
                                         disabled={loading}
                                     />
                                 </div>
