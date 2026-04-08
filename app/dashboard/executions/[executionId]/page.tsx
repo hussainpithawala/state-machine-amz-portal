@@ -803,6 +803,20 @@ function StateTimeline({
 }
 
 function JsonViewer({data, title}: { data?: Record<string, any>; title?: string }) {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+        if (!data) return;
+        try {
+            const jsonString = JSON.stringify(data, null, 2);
+            await navigator.clipboard.writeText(jsonString);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+        }
+    };
+
     if (!data || Object.keys(data).length === 0) {
         return (
             <div className="text-center py-8 text-gray-500">
@@ -814,10 +828,32 @@ function JsonViewer({data, title}: { data?: Record<string, any>; title?: string 
     }
 
     return (
-        <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm overflow-x-auto max-h-[600px]">
-      <pre className="whitespace-pre-wrap break-words">
-        {formatJson(data)}
-      </pre>
+        <div className="relative group">
+            <div className="absolute top-2 right-2 z-10">
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-8 px-3 text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600"
+                    onClick={handleCopy}
+                >
+                    {copied ? (
+                        <>
+                            <Check className="h-3 w-3 mr-1 text-green-400"/>
+                            <span className="text-green-400">Copied!</span>
+                        </>
+                    ) : (
+                        <>
+                            <Copy className="h-3 w-3 mr-1"/>
+                            Copy
+                        </>
+                    )}
+                </Button>
+            </div>
+            <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm overflow-x-auto max-h-[600px]">
+                <pre className="whitespace-pre-wrap break-words">
+                    {formatJson(data)}
+                </pre>
+            </div>
         </div>
     );
 }
