@@ -14,7 +14,9 @@ import {
     Clock,
     ExternalLink,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    ChevronsLeft,
+    ChevronsRight
 } from 'lucide-react';
 import { StateMachine } from '@/types/database';
 import { formatDate } from '@/lib/utils';
@@ -39,6 +41,7 @@ export default function StateMachinesPage() {
     const [pageSize] = useState(20);
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
+    const [jumpPage, setJumpPage] = useState('');
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -89,6 +92,26 @@ export default function StateMachinesPage() {
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= totalPages) {
             setCurrentPage(newPage);
+        }
+    };
+
+    const handleJumpToPage = () => {
+        const pageToJump = parseInt(jumpPage, 10);
+        if (Number.isNaN(pageToJump) || pageToJump < 1) {
+            setJumpPage('');
+            return;
+        }
+        if (pageToJump > totalPages) {
+            setJumpPage(totalPages.toString());
+            return;
+        }
+        setJumpPage('');
+        handlePageChange(pageToJump);
+    };
+
+    const handleJumpPageKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            handleJumpToPage();
         }
     };
 
@@ -262,15 +285,50 @@ export default function StateMachinesPage() {
                                     <Button
                                         variant="outline"
                                         size="sm"
+                                        onClick={() => handlePageChange(1)}
+                                        disabled={currentPage === 1}
+                                        title="First page"
+                                    >
+                                        <ChevronsLeft className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
                                         onClick={() => handlePageChange(currentPage - 1)}
                                         disabled={currentPage === 1}
                                     >
                                         <ChevronLeft className="h-4 w-4" />
                                         Previous
                                     </Button>
-                                    <span className="text-sm text-gray-600">
-                    Page {currentPage} of {totalPages}
-                  </span>
+                                    <div className="flex items-center space-x-1">
+                                        <span className="text-sm text-gray-600">
+                                            Page
+                                        </span>
+                                        <Input
+                                            type="number"
+                                            min={1}
+                                            max={totalPages}
+                                            value={jumpPage}
+                                            placeholder={currentPage.toString()}
+                                            onChange={(e) => setJumpPage(e.target.value)}
+                                            onKeyDown={handleJumpPageKeyDown}
+                                            className="w-20 h-8 text-sm text-center"
+                                            title={`Jump to page (1-${totalPages})`}
+                                        />
+                                        <span className="text-sm text-gray-600">
+                                            of {totalPages}
+                                        </span>
+                                        {jumpPage && jumpPage !== currentPage.toString() && (
+                                            <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={handleJumpToPage}
+                                                className="h-8 px-3 text-xs"
+                                            >
+                                                Go
+                                            </Button>
+                                        )}
+                                    </div>
                                     <Button
                                         variant="outline"
                                         size="sm"
@@ -279,6 +337,15 @@ export default function StateMachinesPage() {
                                     >
                                         Next
                                         <ChevronRight className="h-4 w-4 ml-1" />
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handlePageChange(totalPages)}
+                                        disabled={currentPage === totalPages}
+                                        title="Last page"
+                                    >
+                                        <ChevronsRight className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </div>
