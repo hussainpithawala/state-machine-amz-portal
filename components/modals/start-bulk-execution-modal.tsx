@@ -61,8 +61,8 @@ export function StartBulkExecutionModal({
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > 10 * 1024 * 1024) {
-                setError('File size must be less than 10MB');
+            if (file.size > 100 * 1024 * 1024) {
+                setError('File size must be less than 100MB');
                 setSelectedFile(null);
                 return;
             }
@@ -336,7 +336,7 @@ export function StartBulkExecutionModal({
                                         </div>
                                     )}
                                     <p className="text-xs text-gray-500">
-                                        Upload a JSON file containing an array of inputs. Max file size: 10MB.
+                                        Upload a JSON file containing an array of inputs. Max file size: 100MB.
                                     </p>
                                 </div>
                             )}
