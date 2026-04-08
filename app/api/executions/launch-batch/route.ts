@@ -16,6 +16,7 @@ const launchBatchExecutionSchema = z.object({
         limit: z.number().int().min(1).optional().default(1000),
     }),
     namePrefix: z.string().min(1, 'Name prefix is required'),
+    groupEnqueue: z.boolean().optional().default(false),
     concurrency: z.number().int().min(1).max(100).optional().default(5),
     mode: z.enum(['distributed', 'concurrent', 'sequential']).optional().default('distributed'),
     stopOnError: z.boolean().optional().default(false),
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
                 body: JSON.stringify({
                     filter: validated.filter,
                     namePrefix: validated.namePrefix,
+                    groupEnqueue: validated.groupEnqueue,
                     concurrency: validated.concurrency,
                     mode: validated.mode,
                     stopOnError: validated.stopOnError,
