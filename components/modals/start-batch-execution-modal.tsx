@@ -125,7 +125,7 @@ export function StartBatchExecutionModal({
         const limit = parseInt(formData.limit);
         const microBatchSize = parseInt(formData.microBatchSize);
 
-        if (isNaN(concurrency) || concurrency < 1 || concurrency > 100) {
+        if (isNaN(concurrency) || concurrency < 1 || concurrency > 1000) {
             setError('Concurrency must be between 1 and 100');
             return;
         }
@@ -463,7 +463,7 @@ export function StartBatchExecutionModal({
                                         onChange={handleChange}
                                         placeholder="5"
                                         min="1"
-                                        max="100"
+                                        max="1000"
                                         disabled={loading}
                                     />
                                 </div>

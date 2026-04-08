@@ -55,12 +55,16 @@ export async function POST(request: NextRequest) {
 
         // Get other form fields
         const namePrefix = formData.get('namePrefix') as string || `bulk-${Date.now()}`;
+        const groupEnqueue = formData.get('groupEnqueue') === 'true';
         const concurrency = parseInt(formData.get('concurrency') as string) || 10;
         const mode = formData.get('mode') as string || 'concurrent';
         const stopOnError = formData.get('stopOnError') === 'true';
         const doMicroBatch = formData.get('doMicroBatch') === 'true';
         const microBatchSize = parseInt(formData.get('microBatchSize') as string) || 100;
         const orchestratorId = formData.get('orchestratorId') as string || undefined;
+
+        // Add groupEnqueue to formData for forwarding
+        formData.set('groupEnqueue', groupEnqueue.toString());
 
         // Forward to downstream service
         const serviceUrl = process.env.STATE_MACHINE_SERVICE_URL || 'http://localhost:9090';

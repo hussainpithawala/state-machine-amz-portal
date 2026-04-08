@@ -17,7 +17,7 @@ const launchBatchExecutionSchema = z.object({
     }),
     namePrefix: z.string().min(1, 'Name prefix is required'),
     groupEnqueue: z.boolean().optional().default(false),
-    concurrency: z.number().int().min(1).max(100).optional().default(5),
+    concurrency: z.number().int().min(1).max(1000).optional().default(5),
     mode: z.enum(['distributed', 'concurrent', 'sequential']).optional().default('distributed'),
     stopOnError: z.boolean().optional().default(false),
     doMicroBatch: z.boolean().optional().default(false),
