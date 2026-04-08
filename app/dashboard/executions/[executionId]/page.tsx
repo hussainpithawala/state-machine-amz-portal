@@ -630,6 +630,46 @@ function JsonBlock({data, label}: { data: Record<string, any>; label: string }) 
     );
 }
 
+function LoopIterationSelector({
+    detectedLoop,
+    onLoopIndexChange
+}: {
+    detectedLoop: { startIndex: number; patternLength: number; repeatCount: number };
+    onLoopIndexChange: (index: number) => void;
+}) {
+    const [selectedLoopIndex, setSelectedLoopIndex] = useState(0);
+
+    return (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label htmlFor="loop-iteration-index" className="text-xs font-medium text-amber-900">
+                Iteration Index
+            </label>
+            <Input
+                id="loop-iteration-index"
+                type="number"
+                min={0}
+                max={detectedLoop.repeatCount - 1}
+                value={selectedLoopIndex}
+                onChange={(event) => {
+                    const parsed = Number.parseInt(event.target.value, 10);
+                    if (Number.isNaN(parsed)) {
+                        setSelectedLoopIndex(0);
+                        onLoopIndexChange(0);
+                        return;
+                    }
+                    const clamped = Math.min(Math.max(parsed, 0), detectedLoop.repeatCount - 1);
+                    setSelectedLoopIndex(clamped);
+                    onLoopIndexChange(clamped);
+                }}
+                className="h-8 w-24"
+            />
+            <span className="text-xs text-amber-800">
+                Range: 0 to {detectedLoop.repeatCount - 1}
+            </span>
+        </div>
+    );
+}
+
 function StateTimeline({
     states,
     totalStates,
@@ -648,20 +688,7 @@ function StateTimeline({
     loadingMore: boolean;
 }) {
     const detectedLoop = loopDetection?.detected ? loopDetection.loop : null;
-    const [selectedLoopIndex, setSelectedLoopIndex] = useState(0);
-
-    useEffect(() => {
-        if (!detectedLoop) {
-            setSelectedLoopIndex(0);
-            return;
-        }
-
-        setSelectedLoopIndex((previous) => {
-            if (previous < 0) return 0;
-            if (previous > detectedLoop.repeatCount - 1) return detectedLoop.repeatCount - 1;
-            return previous;
-        });
-    }, [detectedLoop?.startIndex, detectedLoop?.patternLength, detectedLoop?.repeatCount]);
+    const [activeLoopIndex, setActiveLoopIndex] = useState(0);
 
     if (states.length === 0) {
         return (
@@ -672,10 +699,6 @@ function StateTimeline({
             </div>
         );
     }
-
-    const activeLoopIndex = detectedLoop
-        ? Math.min(Math.max(selectedLoopIndex, 0), detectedLoop.repeatCount - 1)
-        : 0;
 
     const visibleStates = detectedLoop
         ? [
@@ -704,32 +727,11 @@ function StateTimeline({
                         <span className="font-semibold">{detectedLoop.repeatCount}</span> times. Showing iteration index{' '}
                         <span className="font-semibold">{activeLoopIndex}</span> (0-based).
                     </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <label htmlFor="loop-iteration-index" className="text-xs font-medium text-amber-900">
-                            Iteration Index
-                        </label>
-                        <Input
-                            id="loop-iteration-index"
-                            type="number"
-                            min={0}
-                            max={detectedLoop.repeatCount - 1}
-                            value={activeLoopIndex}
-                            onChange={(event) => {
-                                const parsed = Number.parseInt(event.target.value, 10);
-                                if (Number.isNaN(parsed)) {
-                                    setSelectedLoopIndex(0);
-                                    return;
-                                }
-                                setSelectedLoopIndex(
-                                    Math.min(Math.max(parsed, 0), detectedLoop.repeatCount - 1)
-                                );
-                            }}
-                            className="h-8 w-24"
-                        />
-                        <span className="text-xs text-amber-800">
-                            Range: 0 to {detectedLoop.repeatCount - 1}
-                        </span>
-                    </div>
+                    <LoopIterationSelector
+                        key={`${detectedLoop.startIndex}-${detectedLoop.patternLength}-${detectedLoop.repeatCount}`}
+                        detectedLoop={detectedLoop}
+                        onLoopIndexChange={setActiveLoopIndex}
+                    />
                 </div>
             )}
             {visibleStates.map((state, index) => {
