@@ -20,7 +20,9 @@ import {
     RotateCcw,
     Hash,
     LinkIcon,
-    Loader2
+    Loader2,
+    Copy,
+    Check
 } from 'lucide-react';
 import {Execution, StateHistoryEntry} from '@/types/database';
 import {formatDate, formatDuration, getStatusColor, formatJson} from '@/lib/utils';
@@ -584,6 +586,50 @@ function SummaryCard({title, count, icon: Icon, color}: {
     )
 }
 
+function JsonBlock({data, label}: { data: Record<string, any>; label: string }) {
+    const [copied, setCopied] = useState(false);
+    const jsonString = JSON.stringify(data, null, 2);
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(jsonString);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+        }
+    };
+
+    return (
+        <div className="relative group">
+            <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-600">{label}:</span>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={handleCopy}
+                >
+                    {copied ? (
+                        <>
+                            <Check className="h-3 w-3 mr-1 text-green-600"/>
+                            <span className="text-green-600">Copied!</span>
+                        </>
+                    ) : (
+                        <>
+                            <Copy className="h-3 w-3 mr-1"/>
+                            Copy
+                        </>
+                    )}
+                </Button>
+            </div>
+            <pre className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-32">
+                {jsonString}
+            </pre>
+        </div>
+    );
+}
+
 function StateTimeline({
     states,
     totalStates,
@@ -740,22 +786,10 @@ function StateTimeline({
                                 {(state.input || state.output) && (
                                     <div className="mt-2 space-y-1">
                                         {state.input && (
-                                            <div>
-                                                <span className="text-xs font-medium text-gray-600">Input:</span>
-                                                <pre
-                                                    className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-32">
-                          {JSON.stringify(state.input, null, 2)}
-                        </pre>
-                                            </div>
+                                            <JsonBlock data={state.input} label="Input"/>
                                         )}
                                         {state.output && (
-                                            <div>
-                                                <span className="text-xs font-medium text-gray-600">Output:</span>
-                                                <pre
-                                                    className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-32">
-                          {JSON.stringify(state.output, null, 2)}
-                        </pre>
-                                            </div>
+                                            <JsonBlock data={state.output} label="Output"/>
                                         )}
                                     </div>
                                 )}
