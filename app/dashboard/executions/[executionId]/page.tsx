@@ -1,6 +1,6 @@
 'use client';
 
-import {useState, useEffect} from 'react';
+import {useState, useEffect, useCallback} from 'react';
 import {useParams, useRouter} from 'next/navigation';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
@@ -19,13 +19,35 @@ import {
     Pause,
     RotateCcw,
     Hash,
-    LinkIcon
+    LinkIcon,
+    Loader2,
+    Copy,
+    Check
 } from 'lucide-react';
 import {Execution, StateHistoryEntry} from '@/types/database';
 import {formatDate, formatDuration, getStatusColor, formatJson} from '@/lib/utils';
 import Link from 'next/link';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
+
+interface PaginationInfo {
+    limit: number;
+    cursor: number | null;
+    nextCursor: number | null;
+    hasMore: boolean;
+    loadedStates: number;
+}
+
+interface LoopDetectionInfo {
+    detected: boolean;
+    loop: {
+        startIndex: number;
+        patternLength: number;
+        repeatCount: number;
+    } | null;
+    status: 'none' | 'detected' | 'not_found';
+    message: string;
+}
 
 interface ExecutionDetail {
     execution: Execution;
@@ -37,7 +59,8 @@ interface ExecutionDetail {
         waiting: number;
     };
     totalStates: number;
-    totalDuration: number | null;
+    pagination: PaginationInfo;
+    loopDetection: LoopDetectionInfo | null;
 }
 
 export default function ExecutionDetailPage() {
@@ -70,9 +93,11 @@ export default function ExecutionDetailPage() {
 
     const [executionDetail, setExecutionDetail] = useState<ExecutionDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('timeline');
     const [resuming, setResuming] = useState(false);
+    const [loopDetectionEnabled, setLoopDetectionEnabled] = useState(true);
 
     useEffect(() => {
         fetchExecutionDetail();
@@ -92,17 +117,17 @@ export default function ExecutionDetailPage() {
             }
 
             const executionData = await executionResponse.json();
-            
+
             // Extract execution from results array (should be only one result)
             const execution = executionData.results?.[0];
-            
+
             if (!execution) {
                 throw new Error('Execution not found');
             }
 
-            // Get state history using ONLY executionId
+            // Get state history using ONLY executionId with pagination
             const historyResponse = await fetch(
-                `/api/state-history?executionId=${encodeURIComponent(executionId)}`
+                `/api/state-history?executionId=${encodeURIComponent(executionId)}&limit=100&detectLoop=true`
             );
 
             if (!historyResponse.ok) {
@@ -117,7 +142,8 @@ export default function ExecutionDetailPage() {
                 stateHistory: historyData.states,
                 summary: historyData.summary,
                 totalStates: historyData.totalStates,
-                totalDuration: historyData.totalDuration,
+                pagination: historyData.pagination,
+                loopDetection: historyData.loopDetection,
             });
         } catch (err) {
             console.error('Error fetching execution detail:', err);
@@ -126,6 +152,47 @@ export default function ExecutionDetailPage() {
             setLoading(false);
         }
     };
+
+    const loadMoreStates = useCallback(async () => {
+        if (!executionDetail || !executionDetail.pagination.hasMore || loadingMore) {
+            return;
+        }
+
+        // If loop was detected in first page, skip loading more unless explicitly requested
+        if (executionDetail.loopDetection?.detected && loopDetectionEnabled) {
+            return;
+        }
+
+        try {
+            setLoadingMore(true);
+
+            const historyResponse = await fetch(
+                `/api/state-history?executionId=${encodeURIComponent(executionId)}&limit=100&cursor=${executionDetail.pagination.nextCursor}&detectLoop=false`
+            );
+
+            if (!historyResponse.ok) {
+                const errorData = await historyResponse.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to fetch more state history');
+            }
+
+            const historyData = await historyResponse.json();
+
+            setExecutionDetail(prev => {
+                if (!prev) return prev;
+                
+                return {
+                    ...prev,
+                    stateHistory: [...prev.stateHistory, ...historyData.states],
+                    pagination: historyData.pagination,
+                };
+            });
+        } catch (err) {
+            console.error('Error loading more state history:', err);
+            alert('Failed to load more state history');
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [executionDetail, executionId, loadingMore, loopDetectionEnabled]);
 
     const handleRetry = async () => {
         // TODO: Implement retry logic
@@ -200,7 +267,20 @@ export default function ExecutionDetailPage() {
         );
     }
 
-    const {execution, stateHistory, summary, totalDuration} = executionDetail;
+    const {execution, stateHistory, summary} = executionDetail;
+    
+    // Calculate total duration from loaded state history
+    const totalDuration = stateHistory.length > 0
+        ? (() => {
+            const firstState = stateHistory[0];
+            const lastState = stateHistory[stateHistory.length - 1];
+            if (lastState.endTime && firstState.startTime) {
+                return new Date(lastState.endTime).getTime() - new Date(firstState.startTime).getTime();
+            }
+            return null;
+        })()
+        : null;
+    
     const isRunning = execution.status === 'RUNNING';
     const hasFailed = execution.status === 'FAILED';
     const hasSucceeded = execution.status === 'SUCCEEDED';
@@ -386,7 +466,50 @@ export default function ExecutionDetailPage() {
                 </CardHeader>
                 <CardContent>
                     {activeTab === 'timeline' ? (
-                        <StateTimeline states={stateHistory}/>
+                        <>
+                            <StateTimeline 
+                                states={stateHistory}
+                                totalStates={executionDetail.totalStates}
+                                loadedStates={executionDetail.pagination.loadedStates}
+                                hasMore={executionDetail.pagination.hasMore}
+                                loopDetection={executionDetail.loopDetection}
+                                onLoadMore={loadMoreStates}
+                                loadingMore={loadingMore}
+                            />
+                            {executionDetail.pagination.hasMore && !executionDetail.loopDetection?.detected && (
+                                <div className="mt-6 flex justify-center">
+                                    <Button
+                                        onClick={loadMoreStates}
+                                        disabled={loadingMore}
+                                        variant="outline"
+                                    >
+                                        {loadingMore ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 mr-2 animate-spin"/>
+                                                Loading...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <History className="h-4 w-4 mr-2"/>
+                                                Load More States ({executionDetail.pagination.loadedStates} of {executionDetail.totalStates})
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            )}
+                            {executionDetail.loopDetection?.detected && (
+                                <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
+                                    <p className="text-sm text-amber-900">
+                                        <AlertCircle className="h-4 w-4 inline mr-1"/>
+                                        {executionDetail.loopDetection.message}
+                                    </p>
+                                    <p className="text-xs text-amber-800 mt-2">
+                                        Only showing first {executionDetail.pagination.loadedStates} states to optimize performance. 
+                                        Total states: {executionDetail.totalStates}
+                                    </p>
+                                </div>
+                            )}
+                        </>
                     ) : activeTab === 'input' ? (
                         <JsonViewer data={execution.input} title="Execution Input"/>
                     ) : activeTab === 'output' ? (
@@ -463,94 +586,109 @@ function SummaryCard({title, count, icon: Icon, color}: {
     )
 }
 
-interface DetectedLoop {
-    startIndex: number;
-    patternLength: number;
-    repeatCount: number;
-}
+function JsonBlock({data, label}: { data: Record<string, any>; label: string }) {
+    const [copied, setCopied] = useState(false);
+    const jsonString = JSON.stringify(data, null, 2);
 
-function getStateSignature(state: StateHistoryEntry): string {
-    return `${state.stateName}::${state.stateType}`;
-}
-
-function matchesPattern(
-    signatures: string[],
-    startIndex: number,
-    patternLength: number,
-    repeatOffset: number
-): boolean {
-    const candidateStart = startIndex + repeatOffset * patternLength;
-
-    for (let i = 0; i < patternLength; i++) {
-        if (signatures[startIndex + i] !== signatures[candidateStart + i]) {
-            return false;
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(jsonString);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
         }
-    }
+    };
 
-    return true;
+    return (
+        <div className="relative group">
+            <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-600">{label}:</span>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={handleCopy}
+                >
+                    {copied ? (
+                        <>
+                            <Check className="h-3 w-3 mr-1 text-green-600"/>
+                            <span className="text-green-600">Copied!</span>
+                        </>
+                    ) : (
+                        <>
+                            <Copy className="h-3 w-3 mr-1"/>
+                            Copy
+                        </>
+                    )}
+                </Button>
+            </div>
+            <pre className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-32">
+                {jsonString}
+            </pre>
+        </div>
+    );
 }
 
-function detectRepeatedLoop(states: StateHistoryEntry[]): DetectedLoop | null {
-    if (states.length < 2) {
-        return null;
-    }
-
-    const signatures = states.map(getStateSignature);
-    let bestLoop: DetectedLoop | null = null;
-
-    for (let startIndex = 0; startIndex < signatures.length - 1; startIndex++) {
-        const maxPatternLength = Math.floor((signatures.length - startIndex) / 2);
-
-        for (let patternLength = 1; patternLength <= maxPatternLength; patternLength++) {
-            let repeatCount = 1;
-
-            while (
-                startIndex + (repeatCount + 1) * patternLength <= signatures.length &&
-                matchesPattern(signatures, startIndex, patternLength, repeatCount)
-                ) {
-                repeatCount++;
-            }
-
-            if (repeatCount < 2) {
-                continue;
-            }
-
-            const candidateCoverage = repeatCount * patternLength;
-            const bestCoverage = bestLoop ? bestLoop.repeatCount * bestLoop.patternLength : 0;
-            const isBetterCoverage = candidateCoverage > bestCoverage;
-            const isEarlierAtSameCoverage =
-                !!bestLoop && candidateCoverage === bestCoverage && startIndex < bestLoop.startIndex;
-            const isShorterAtSameCoverageAndStart =
-                !!bestLoop &&
-                candidateCoverage === bestCoverage &&
-                startIndex === bestLoop.startIndex &&
-                patternLength < bestLoop.patternLength;
-
-            if (!bestLoop || isBetterCoverage || isEarlierAtSameCoverage || isShorterAtSameCoverageAndStart) {
-                bestLoop = {startIndex, patternLength, repeatCount};
-            }
-        }
-    }
-
-    return bestLoop;
-}
-
-function StateTimeline({states}: { states: StateHistoryEntry[] }) {
-    const detectedLoop = detectRepeatedLoop(states);
+function LoopIterationSelector({
+    detectedLoop,
+    onLoopIndexChange
+}: {
+    detectedLoop: { startIndex: number; patternLength: number; repeatCount: number };
+    onLoopIndexChange: (index: number) => void;
+}) {
     const [selectedLoopIndex, setSelectedLoopIndex] = useState(0);
 
-    useEffect(() => {
-        if (!detectedLoop) {
-            setSelectedLoopIndex(0);
-            return;
-        }
+    return (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label htmlFor="loop-iteration-index" className="text-xs font-medium text-amber-900">
+                Iteration Index
+            </label>
+            <Input
+                id="loop-iteration-index"
+                type="number"
+                min={0}
+                max={detectedLoop.repeatCount - 1}
+                value={selectedLoopIndex}
+                onChange={(event) => {
+                    const parsed = Number.parseInt(event.target.value, 10);
+                    if (Number.isNaN(parsed)) {
+                        setSelectedLoopIndex(0);
+                        onLoopIndexChange(0);
+                        return;
+                    }
+                    const clamped = Math.min(Math.max(parsed, 0), detectedLoop.repeatCount - 1);
+                    setSelectedLoopIndex(clamped);
+                    onLoopIndexChange(clamped);
+                }}
+                className="h-8 w-24"
+            />
+            <span className="text-xs text-amber-800">
+                Range: 0 to {detectedLoop.repeatCount - 1}
+            </span>
+        </div>
+    );
+}
 
-        setSelectedLoopIndex((previous) => {
-            if (previous < 0) return 0;
-            if (previous > detectedLoop.repeatCount - 1) return detectedLoop.repeatCount - 1;
-            return previous;
-        });
-    }, [detectedLoop?.startIndex, detectedLoop?.patternLength, detectedLoop?.repeatCount]);
+function StateTimeline({
+    states,
+    totalStates,
+    loadedStates,
+    hasMore,
+    loopDetection,
+    onLoadMore,
+    loadingMore
+}: {
+    states: StateHistoryEntry[];
+    totalStates: number;
+    loadedStates: number;
+    hasMore: boolean;
+    loopDetection: LoopDetectionInfo | null;
+    onLoadMore: () => void;
+    loadingMore: boolean;
+}) {
+    const detectedLoop = loopDetection?.detected ? loopDetection.loop : null;
+    const [activeLoopIndex, setActiveLoopIndex] = useState(0);
 
     if (states.length === 0) {
         return (
@@ -561,10 +699,6 @@ function StateTimeline({states}: { states: StateHistoryEntry[] }) {
             </div>
         );
     }
-
-    const activeLoopIndex = detectedLoop
-        ? Math.min(Math.max(selectedLoopIndex, 0), detectedLoop.repeatCount - 1)
-        : 0;
 
     const visibleStates = detectedLoop
         ? [
@@ -593,32 +727,11 @@ function StateTimeline({states}: { states: StateHistoryEntry[] }) {
                         <span className="font-semibold">{detectedLoop.repeatCount}</span> times. Showing iteration index{' '}
                         <span className="font-semibold">{activeLoopIndex}</span> (0-based).
                     </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <label htmlFor="loop-iteration-index" className="text-xs font-medium text-amber-900">
-                            Iteration Index
-                        </label>
-                        <Input
-                            id="loop-iteration-index"
-                            type="number"
-                            min={0}
-                            max={detectedLoop.repeatCount - 1}
-                            value={activeLoopIndex}
-                            onChange={(event) => {
-                                const parsed = Number.parseInt(event.target.value, 10);
-                                if (Number.isNaN(parsed)) {
-                                    setSelectedLoopIndex(0);
-                                    return;
-                                }
-                                setSelectedLoopIndex(
-                                    Math.min(Math.max(parsed, 0), detectedLoop.repeatCount - 1)
-                                );
-                            }}
-                            className="h-8 w-24"
-                        />
-                        <span className="text-xs text-amber-800">
-                            Range: 0 to {detectedLoop.repeatCount - 1}
-                        </span>
-                    </div>
+                    <LoopIterationSelector
+                        key={`${detectedLoop.startIndex}-${detectedLoop.patternLength}-${detectedLoop.repeatCount}`}
+                        detectedLoop={detectedLoop}
+                        onLoopIndexChange={setActiveLoopIndex}
+                    />
                 </div>
             )}
             {visibleStates.map((state, index) => {
@@ -675,22 +788,10 @@ function StateTimeline({states}: { states: StateHistoryEntry[] }) {
                                 {(state.input || state.output) && (
                                     <div className="mt-2 space-y-1">
                                         {state.input && (
-                                            <div>
-                                                <span className="text-xs font-medium text-gray-600">Input:</span>
-                                                <pre
-                                                    className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-32">
-                          {JSON.stringify(state.input, null, 2)}
-                        </pre>
-                                            </div>
+                                            <JsonBlock data={state.input} label="Input"/>
                                         )}
                                         {state.output && (
-                                            <div>
-                                                <span className="text-xs font-medium text-gray-600">Output:</span>
-                                                <pre
-                                                    className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-32">
-                          {JSON.stringify(state.output, null, 2)}
-                        </pre>
-                                            </div>
+                                            <JsonBlock data={state.output} label="Output"/>
                                         )}
                                     </div>
                                 )}
@@ -704,6 +805,20 @@ function StateTimeline({states}: { states: StateHistoryEntry[] }) {
 }
 
 function JsonViewer({data, title}: { data?: Record<string, any>; title?: string }) {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+        if (!data) return;
+        try {
+            const jsonString = JSON.stringify(data, null, 2);
+            await navigator.clipboard.writeText(jsonString);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+        }
+    };
+
     if (!data || Object.keys(data).length === 0) {
         return (
             <div className="text-center py-8 text-gray-500">
@@ -715,10 +830,32 @@ function JsonViewer({data, title}: { data?: Record<string, any>; title?: string 
     }
 
     return (
-        <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm overflow-x-auto max-h-[600px]">
-      <pre className="whitespace-pre-wrap break-words">
-        {formatJson(data)}
-      </pre>
+        <div className="relative group">
+            <div className="absolute top-2 right-2 z-10">
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-8 px-3 text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600"
+                    onClick={handleCopy}
+                >
+                    {copied ? (
+                        <>
+                            <Check className="h-3 w-3 mr-1 text-green-400"/>
+                            <span className="text-green-400">Copied!</span>
+                        </>
+                    ) : (
+                        <>
+                            <Copy className="h-3 w-3 mr-1"/>
+                            Copy
+                        </>
+                    )}
+                </Button>
+            </div>
+            <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm overflow-x-auto max-h-[600px]">
+                <pre className="whitespace-pre-wrap break-words">
+                    {formatJson(data)}
+                </pre>
+            </div>
         </div>
     );
 }

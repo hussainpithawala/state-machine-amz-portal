@@ -20,7 +20,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Play, Package, GitBranch, Upload, FileJson } from "lucide-react";
+import { Loader2, Play, Package, GitBranch, Upload, FileJson, Layers } from "lucide-react";
 import { toast } from 'sonner';
 import { TransformerSelect } from '@/components/ui/transformer-select';
 
@@ -43,6 +43,7 @@ export function StartBulkExecutionModal({
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [formData, setFormData] = useState({
         namePrefix: `bulk-${stateMachineName.replace(/\s+/g, '-')}-${Date.now()}`,
+        groupEnqueue: false,
         concurrency: '10',
         mode: 'concurrent' as 'concurrent' | 'sequential',
         stopOnError: false,
@@ -61,8 +62,8 @@ export function StartBulkExecutionModal({
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > 10 * 1024 * 1024) {
-                setError('File size must be less than 10MB');
+            if (file.size > 100 * 1024 * 1024) {
+                setError('File size must be less than 100MB');
                 setSelectedFile(null);
                 return;
             }
@@ -164,6 +165,7 @@ export function StartBulkExecutionModal({
                 const formFormData = new FormData();
                 formFormData.append('inputs', selectedFile);
                 formFormData.append('namePrefix', formData.namePrefix.trim());
+                formFormData.append('groupEnqueue', formData.groupEnqueue.toString());
                 formFormData.append('concurrency', concurrency.toString());
                 formFormData.append('mode', formData.mode);
                 formFormData.append('stopOnError', formData.stopOnError.toString());
@@ -195,6 +197,7 @@ export function StartBulkExecutionModal({
                 const requestBody = {
                     stateMachineId: stateMachineId,
                     namePrefix: formData.namePrefix.trim(),
+                    groupEnqueue: formData.groupEnqueue,
                     concurrency: concurrency,
                     mode: formData.mode,
                     stopOnError: formData.stopOnError,
@@ -336,7 +339,7 @@ export function StartBulkExecutionModal({
                                         </div>
                                     )}
                                     <p className="text-xs text-gray-500">
-                                        Upload a JSON file containing an array of inputs. Max file size: 10MB.
+                                        Upload a JSON file containing an array of inputs. Max file size: 100MB.
                                     </p>
                                 </div>
                             )}
@@ -360,6 +363,22 @@ export function StartBulkExecutionModal({
                                     disabled={loading}
                                     required
                                 />
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    id="groupEnqueue"
+                                    name="groupEnqueue"
+                                    type="checkbox"
+                                    checked={formData.groupEnqueue}
+                                    onChange={handleChange}
+                                    disabled={loading}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <label htmlFor="groupEnqueue" className="text-sm text-gray-700 flex items-center">
+                                    <Layers className="h-4 w-4 mr-1 text-blue-500" />
+                                    Group Enqueue
+                                </label>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

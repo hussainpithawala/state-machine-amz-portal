@@ -5,6 +5,7 @@ import { z } from 'zod';
 const launchBulkExecutionSchema = z.object({
     stateMachineId: z.string().min(1, 'State Machine ID is required'),
     namePrefix: z.string().min(1, 'Name prefix is required'),
+    groupEnqueue: z.boolean().optional().default(false),
     concurrency: z.number().int().min(1).optional().default(10),
     mode: z.enum(['concurrent', 'sequential']).optional().default('concurrent'),
     stopOnError: z.boolean().optional().default(false),
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
                 },
                 body: JSON.stringify({
                     namePrefix: validated.namePrefix,
+                    groupEnqueue: validated.groupEnqueue,
                     concurrency: validated.concurrency,
                     mode: validated.mode,
                     stopOnError: validated.stopOnError,

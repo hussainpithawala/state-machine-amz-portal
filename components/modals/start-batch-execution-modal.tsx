@@ -52,6 +52,7 @@ export function StartBatchExecutionModal({
         namePattern: '',
         limit: '10',
         namePrefix: `batch-${stateMachineName.replace(/\s+/g, '-')}-${Date.now()}`,
+        groupEnqueue: false,
         concurrency: '5',
         mode: 'concurrent' as 'distributed' | 'concurrent' | 'sequential',
         stopOnError: false,
@@ -124,7 +125,7 @@ export function StartBatchExecutionModal({
         const limit = parseInt(formData.limit);
         const microBatchSize = parseInt(formData.microBatchSize);
 
-        if (isNaN(concurrency) || concurrency < 1 || concurrency > 100) {
+        if (isNaN(concurrency) || concurrency < 1 || concurrency > 1000) {
             setError('Concurrency must be between 1 and 100');
             return;
         }
@@ -149,6 +150,7 @@ export function StartBatchExecutionModal({
                     sourceStateMachineId: formData.sourceStateMachineId.trim(),
                 },
                 namePrefix: formData.namePrefix.trim(),
+                groupEnqueue: formData.groupEnqueue,
                 concurrency: concurrency,
                 mode: formData.mode,
                 stopOnError: formData.stopOnError,
@@ -434,6 +436,22 @@ export function StartBatchExecutionModal({
                                 />
                             </div>
 
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    id="groupEnqueue"
+                                    name="groupEnqueue"
+                                    type="checkbox"
+                                    checked={formData.groupEnqueue}
+                                    onChange={handleChange}
+                                    disabled={loading}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <label htmlFor="groupEnqueue" className="text-sm text-gray-700 flex items-center">
+                                    <Layers className="h-4 w-4 mr-1 text-blue-500" />
+                                    Group Enqueue
+                                </label>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label htmlFor="concurrency" className="text-sm font-medium">Concurrency</label>
@@ -445,7 +463,7 @@ export function StartBatchExecutionModal({
                                         onChange={handleChange}
                                         placeholder="5"
                                         min="1"
-                                        max="100"
+                                        max="1000"
                                         disabled={loading}
                                     />
                                 </div>

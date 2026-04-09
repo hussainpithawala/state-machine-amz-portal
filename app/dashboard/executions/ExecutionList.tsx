@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,8 @@ import {
     ExternalLink,
     ChevronLeft,
     ChevronRight,
+    ChevronsLeft,
+    ChevronsRight,
     Filter
 } from 'lucide-react';
 import { Execution } from '@/types/database';
@@ -42,6 +45,7 @@ export function ExecutionList({ searchParams }: ExecutionListProps) {
     const [pageSize] = useState(25);
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
+    const [jumpPage, setJumpPage] = useState('');
 
     useEffect(() => {
         fetchExecutions();
@@ -89,6 +93,26 @@ export function ExecutionList({ searchParams }: ExecutionListProps) {
             const params = new URLSearchParams(currentSearchParams.toString());
             params.set('page', newPage.toString());
             router.push(`/dashboard/executions?${params}`);
+        }
+    };
+
+    const handleJumpToPage = () => {
+        const pageToJump = parseInt(jumpPage, 10);
+        if (Number.isNaN(pageToJump) || pageToJump < 1) {
+            setJumpPage('');
+            return;
+        }
+        if (pageToJump > totalPages) {
+            setJumpPage(totalPages.toString());
+            return;
+        }
+        setJumpPage('');
+        handlePageChange(pageToJump);
+    };
+
+    const handleJumpPageKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            handleJumpToPage();
         }
     };
 
@@ -255,15 +279,50 @@ export function ExecutionList({ searchParams }: ExecutionListProps) {
                         <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => handlePageChange(1)}
+                            disabled={currentPage === 1}
+                            title="First page"
+                        >
+                            <ChevronsLeft className="h-4 w-4"/>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1}
                         >
                             <ChevronLeft className="h-4 w-4"/>
                             Previous
                         </Button>
-                        <span className="text-sm text-gray-600">
-              Page {currentPage} of {totalPages}
-            </span>
+                        <div className="flex items-center space-x-1">
+                            <span className="text-sm text-gray-600">
+                                Page
+                            </span>
+                            <Input
+                                type="number"
+                                min={1}
+                                max={totalPages}
+                                value={jumpPage}
+                                placeholder={currentPage.toString()}
+                                onChange={(e) => setJumpPage(e.target.value)}
+                                onKeyDown={handleJumpPageKeyDown}
+                                className="w-20 h-8 text-sm text-center"
+                                title={`Jump to page (1-${totalPages})`}
+                            />
+                            <span className="text-sm text-gray-600">
+                                of {totalPages}
+                            </span>
+                            {jumpPage && jumpPage !== currentPage.toString() && (
+                                <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={handleJumpToPage}
+                                    className="h-8 px-3 text-xs"
+                                >
+                                    Go
+                                </Button>
+                            )}
+                        </div>
                         <Button
                             variant="outline"
                             size="sm"
@@ -272,6 +331,15 @@ export function ExecutionList({ searchParams }: ExecutionListProps) {
                         >
                             Next
                             <ChevronRight className="h-4 w-4 ml-1"/>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(totalPages)}
+                            disabled={currentPage === totalPages}
+                            title="Last page"
+                        >
+                            <ChevronsRight className="h-4 w-4"/>
                         </Button>
                     </div>
                 </div>
