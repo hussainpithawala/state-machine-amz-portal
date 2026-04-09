@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] - 2026-04-09
+
+### Added
+- **Page Jump Navigation**: Quick page navigation across all list views
+  - Page number input field to jump directly to any page
+  - "Go" button appears when input differs from current page
+  - Press Enter to quickly navigate to the specified page
+  - First/Last page buttons with double arrow icons for faster navigation
+  - Applied to: Executions List, Linked Executions List, and State Machines pages
+
+- **JSON Copy to Clipboard**: Copy JSON content with a single click
+  - Copy button on Input/Output tabs in execution detail view
+  - Copy button on individual state input/output blocks (appears on hover)
+  - Visual feedback with "Copied!" confirmation and checkmark icon
+  - Consistent styling across all JSON viewers
+
+- **Group Enqueue Option**: New option for batch and bulk executions
+  - "Group Enqueue" checkbox in Start Batch Execution modal
+  - "Group Enqueue" checkbox in Start Bulk Execution modal
+  - API support in both `/api/executions/launch-batch` and `/api/executions/launch-bulk`
+  - Form-data endpoint support for bulk executions with file upload
+
+### Changed
+- **File Upload Size Limit**: Increased max file size for bulk execution from 10MB to 100MB
+  - `start-bulk-execution-modal.tsx` - Updated validation to accept files up to 100MB
+  - `launch-bulk-form/route.ts` - Removed server-side file size validation
+  - Allows larger input files for bulk operations
+
+- **Concurrency Limit**: Increased downstream concurrency limit to 1000
+  - Updated API validation in bulk execution endpoint
+
+### Technical
+- **Files Changed**: 7 files
+  - `app/dashboard/executions/ExecutionList.tsx` - Added page jump navigation
+  - `app/dashboard/linked-executions/LinkedExecutionsList.tsx` - Added page jump navigation
+  - `app/dashboard/state-machines/page.tsx` - Added page jump navigation
+  - `app/dashboard/executions/[executionId]/page.tsx` - Added JSON copy buttons and refactored loop detection
+  - `components/modals/start-batch-execution-modal.tsx` - Added Group Enqueue checkbox
+  - `components/modals/start-bulk-execution-modal.tsx` - Added Group Enqueue checkbox and increased file size limit
+  - `app/api/executions/launch-bulk/route.ts` - Added groupEnqueue field and removed concurrency limit
+  - `app/api/executions/launch-bulk-form/route.ts` - Added groupEnqueue support and removed file size validation
+
+### User Experience Improvements
+- Page jump navigation eliminates the need to click through hundreds of pages
+- Copy buttons make it easy to extract JSON data for debugging and analysis
+- Group Enqueue option provides better control over batch/bulk execution queuing
+- Larger file upload support enables more complex bulk operations
+- Consistent pagination UI across all list pages improves discoverability
+
 ## [1.1.3] - 2026-03-29
 
 ### Added
