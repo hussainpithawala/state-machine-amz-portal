@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.5] - 2026-04-14
+
+### Changed
+- **File Upload Size Limit**: Increased max file size for bulk execution from 100MB to 1GB
+  - `start-bulk-execution-modal.tsx` - Updated validation to accept files up to 1GB
+  - Enables much larger input files for bulk operations
+
+### Technical
+- **Files Changed**: 1 file
+  - `components/modals/start-bulk-execution-modal.tsx` - Updated file size validation from 100MB to 1GB
+
 ## [1.1.4] - 2026-04-09
 
 ### Added
