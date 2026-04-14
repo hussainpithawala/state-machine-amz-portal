@@ -62,8 +62,8 @@ export function StartBulkExecutionModal({
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > 100 * 1024 * 1024) {
-                setError('File size must be less than 100MB');
+            if (file.size > 1024 * 1024 * 1024) {
+                setError('File size must be less than 1 GB');
                 setSelectedFile(null);
                 return;
             }
