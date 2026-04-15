@@ -90,6 +90,8 @@ export default function StateMachineDetailPage() {
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('definition');
     const [copySuccess, setCopySuccess] = useState(false);
+    const [recentExecutions, setRecentExecutions] = useState<any[]>([]);
+    const [loadingExecutions, setLoadingExecutions] = useState(false);
 
     useEffect(() => {
         fetchStateMachineDetail();
@@ -100,7 +102,7 @@ export default function StateMachineDetailPage() {
             setLoading(true);
             setError(null);
 
-            // Fetch state machine details
+            // Fetch state machine details only (no executions)
             const smResponse = await fetch(`/api/state-machines/${encodeURIComponent(stateMachineId)}`);
 
             if (!smResponse.ok) {
@@ -110,10 +112,35 @@ export default function StateMachineDetailPage() {
 
             const stateMachine: StateMachine = await smResponse.json();
 
-            // Fetch execution stats (this will include recent executions)
-            const statsResponse = await fetch(`/api/executions?stateMachineId=${encodeURIComponent(stateMachineId)}&pageSize=5`);
-            const statsData = await statsResponse.json();
+            setStateMachineDetail({
+                stateMachine,
+                executionStats: {
+                    total: 0, // Will be loaded when executions tab is viewed
+                    succeeded: 0,
+                    failed: 0,
+                    running: 0,
+                    successRate: 0
+                },
+                recentExecutions: []
+            });
+        } catch (err) {
+            console.error('Error fetching state machine detail:', err);
+            setError(err instanceof Error ? err.message : 'An error occurred');
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    const fetchRecentExecutions = async () => {
+        if (recentExecutions.length > 0 || loadingExecutions) return; // Already loaded or loading
+
+        try {
+            setLoadingExecutions(true);
+
+            const statsResponse = await fetch(`/api/executions?stateMachineId=${encodeURIComponent(stateMachineId)}&pageSize=5`);
+            if (!statsResponse.ok) return;
+
+            const statsData = await statsResponse.json();
             const executions = statsData.results || [];
             const total = statsData.pagination?.total || 0;
             const succeeded = executions.filter((e: any) => e.status === 'SUCCEEDED').length;
@@ -121,8 +148,9 @@ export default function StateMachineDetailPage() {
             const running = executions.filter((e: any) => e.status === 'RUNNING').length;
             const successRate = total > 0 ? Math.round((succeeded / total) * 100) : 0;
 
-            setStateMachineDetail({
-                stateMachine,
+            setRecentExecutions(executions);
+            setStateMachineDetail(prev => prev ? {
+                ...prev,
                 executionStats: {
                     total,
                     succeeded,
@@ -131,12 +159,11 @@ export default function StateMachineDetailPage() {
                     successRate
                 },
                 recentExecutions: executions
-            });
+            } : null);
         } catch (err) {
-            console.error('Error fetching state machine detail:', err);
-            setError(err instanceof Error ? err.message : 'An error occurred');
+            console.error('Error fetching recent executions:', err);
         } finally {
-            setLoading(false);
+            setLoadingExecutions(false);
         }
     };
 
@@ -218,7 +245,7 @@ export default function StateMachineDetailPage() {
         );
     }
 
-    const {stateMachine, executionStats, recentExecutions} = stateMachineDetail;
+    const {stateMachine, executionStats} = stateMachineDetail;
 
     // Disable execution buttons for orchestrator state machines
     const isOrchestrator = stateMachine.id === 'micro-bulk-orchestrator-v1' || stateMachine.id === 'micro-batch-orchestrator-v1';
@@ -252,7 +279,7 @@ export default function StateMachineDetailPage() {
                         stateMachineId={stateMachine.id}
                         stateMachineName={stateMachine.name}
                         onSuccess={() => {
-                            fetchStateMachineDetail();
+                            fetchRecentExecutions();
                         }}
                         disabled={isOrchestrator}
                     />
@@ -260,7 +287,7 @@ export default function StateMachineDetailPage() {
                         stateMachineId={stateMachine.id}
                         stateMachineName={stateMachine.name}
                         onSuccess={() => {
-                            fetchStateMachineDetail();
+                            fetchRecentExecutions();
                         }}
                         disabled={isOrchestrator}
                     />
@@ -268,7 +295,7 @@ export default function StateMachineDetailPage() {
                         stateMachineId={stateMachine.id}
                         stateMachineName={stateMachine.name}
                         onSuccess={() => {
-                            fetchStateMachineDetail();
+                            fetchRecentExecutions();
                         }}
                         disabled={isOrchestrator}
                     />
@@ -309,7 +336,9 @@ export default function StateMachineDetailPage() {
                         <History className="h-4 w-4 text-gray-400"/>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{executionStats.total}</div>
+                        <div className="text-2xl font-bold">
+                            {executionStats.total > 0 ? executionStats.total : '-'}
+                        </div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -319,7 +348,7 @@ export default function StateMachineDetailPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-green-600">
-                            {executionStats.successRate}%
+                            {executionStats.successRate > 0 ? `${executionStats.successRate}%` : '-'}
                         </div>
                     </CardContent>
                 </Card>
@@ -339,8 +368,13 @@ export default function StateMachineDetailPage() {
             {/* Tabs */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                    <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="grid w-full grid-cols-3">
+                    <Tabs value={activeTab} onValueChange={(value) => {
+                        setActiveTab(value);
+                        if (value === 'executions') {
+                            fetchRecentExecutions();
+                        }
+                    }}>
+                        <TabsList className="grid w-full grid-cols-4">
                             <TabsTrigger value="definition">
                                 <FileJson className="h-4 w-4 mr-2"/>
                                 Definition
@@ -399,7 +433,19 @@ export default function StateMachineDetailPage() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            {recentExecutions.length > 0 ? (
+                            {loadingExecutions ? (
+                                <div className="space-y-3">
+                                    {[...Array(5)].map((_, i) => (
+                                        <div key={i} className="flex items-center justify-between p-4 border-b last:border-b-0">
+                                            <div className="space-y-2 flex-1">
+                                                <div className="h-5 w-48 bg-gray-200 rounded animate-pulse"/>
+                                                <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"/>
+                                            </div>
+                                            <div className="h-8 w-24 bg-gray-200 rounded animate-pulse"/>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : recentExecutions.length > 0 ? (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
