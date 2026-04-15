@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.6] - 2026-04-15
+
+### Changed
+- **Performance**: Eliminated duplicate API calls in dashboard stats loading
+  - Fixed React Strict Mode causing `/api/dashboard/stats` to be called twice
+  - Added component mount state tracking to prevent duplicate state updates
+  - Dashboard page now loads with a single API call instead of two
+
+- **Performance**: Lazy-loaded recent executions on state machine detail page
+  - Removed automatic execution fetch during initial page load
+  - Executions now only load when user clicks the "Recent Executions" tab
+  - State machine detail page loads instantly without waiting for execution queries
+  - Added loading skeleton and "-" placeholder for execution stats until tab is viewed
+
+- **Executions List**: Changed to filter-first approach
+  - Page now loads with filters only, no default execution list
+  - Users must apply filters before executions are fetched
+  - Improved empty state messaging to guide users to apply filters
+  - Reduces unnecessary database queries on page load
+
+### Fixed
+- **Dashboard Stats API**: Fixed variable shadowing bug where `statusCounts` was declared twice
+- **Dashboard Stats API**: Added 30-day date filter to total executions count query to prevent full table scan
+- **Dashboard Stats API**: Implemented actual duration stats queries (avg/max/min) for successful executions in last 7 days
+- **Executions List**: Fixed filter parameter names to match API schema (`executionId`, `executionName`, `startTimeFrom`, `startTimeTo`)
+
+### Technical
+- **Files Changed**: 4 files, +172 insertions, -65 deletions
+  - `app/api/dashboard/stats/route.ts` - Fixed variable shadowing, added date filters, implemented duration stats
+  - `app/dashboard/executions/ExecutionList.tsx` - Added filter-first loading logic
+  - `app/dashboard/page.tsx` - Added mount ref to prevent duplicate API calls
+  - `app/dashboard/state-machines/[id]/page.tsx` - Lazy-loaded executions tab content
+
+### User Experience Improvements
+- Dashboard page loads faster with single API call
+- State machine detail page loads instantly without waiting for execution queries
+- Executions list page encourages targeted searches instead of loading all data
+- Clear visual feedback during loading states with skeletons and placeholders
+
 ## [1.1.5] - 2026-04-14
 
 ### Changed
