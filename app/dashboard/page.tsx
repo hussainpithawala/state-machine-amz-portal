@@ -1,6 +1,6 @@
 'use client';
 
-import {useState, useEffect} from 'react';
+import {useState, useEffect, useRef} from 'react';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {Badge} from '@/components/ui/badge';
@@ -56,16 +56,23 @@ export default function DashboardPage() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const mountedRef = useRef(false);
 
     useEffect(() => {
+        mountedRef.current = true;
         fetchServiceHealth();
         fetchStats();
         // Auto-refresh health every 30 seconds
         const healthInterval = setInterval(() => {
-            fetchServiceHealth();
+            if (mountedRef.current) {
+                fetchServiceHealth();
+            }
         }, 30000);
 
-        return () => clearInterval(healthInterval);
+        return () => {
+            mountedRef.current = false;
+            clearInterval(healthInterval);
+        };
     }, []);
 
     const fetchServiceHealth = async () => {
@@ -78,17 +85,23 @@ export default function DashboardPage() {
             }
 
             const healthData = await response.json();
-            setServiceHealth(healthData);
+            if (mountedRef.current) {
+                setServiceHealth(healthData);
+            }
         } catch (err) {
             console.error('Error fetching service health:', err);
-            setServiceHealth({
-                status: 'DOWN',
-                statusCode: null,
-                message: err instanceof Error ? err.message : 'Failed to fetch health status',
-                timestamp: new Date().toISOString(),
-            });
+            if (mountedRef.current) {
+                setServiceHealth({
+                    status: 'DOWN',
+                    statusCode: null,
+                    message: err instanceof Error ? err.message : 'Failed to fetch health status',
+                    timestamp: new Date().toISOString(),
+                });
+            }
         } finally {
-            setHealthLoading(false);
+            if (mountedRef.current) {
+                setHealthLoading(false);
+            }
         }
     };
 
@@ -103,13 +116,19 @@ export default function DashboardPage() {
             }
 
             const data = await response.json();
-            setStats(data);
-            setError(null);
+            if (mountedRef.current) {
+                setStats(data);
+                setError(null);
+            }
         } catch (err) {
             console.error('Error fetching stats:', err);
-            setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+            if (mountedRef.current) {
+                setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+            }
         } finally {
-            setLoading(false);
+            if (mountedRef.current) {
+                setLoading(false);
+            }
         }
     };
 
