@@ -47,8 +47,18 @@ export function ExecutionList({ searchParams }: ExecutionListProps) {
     const [totalItems, setTotalItems] = useState(0);
     const [jumpPage, setJumpPage] = useState('');
 
+    const hasActiveFilters = () => {
+        const params = currentSearchParams;
+        return params.get('executionId') || params.get('executionName') || params.get('status') || params.get('stateMachineId') || params.get('startTimeFrom') || params.get('startTimeTo') || params.get('stateName') || params.get('stateStatus');
+    };
+
     useEffect(() => {
-        fetchExecutions();
+        if (hasActiveFilters()) {
+            fetchExecutions();
+        } else {
+            setLoading(false);
+            setExecutions([]);
+        }
     }, [currentSearchParams]);
 
     useEffect(() => {
@@ -116,11 +126,6 @@ export function ExecutionList({ searchParams }: ExecutionListProps) {
         }
     };
 
-    const hasActiveFilters = () => {
-        const params = currentSearchParams;
-        return params.get('search') || params.get('status') || params.get('stateMachineId') || params.get('dateRange') !== '30d' || params.get('stateName') || params.get('stateStatus');
-    };
-
     if (loading) {
         return (
             <Card>
@@ -174,9 +179,9 @@ export function ExecutionList({ searchParams }: ExecutionListProps) {
                             </>
                         ) : (
                             <>
-                                <History className="h-12 w-12 mx-auto mb-4 text-gray-300"/>
-                                <p className="text-lg font-medium mb-2">No executions yet</p>
-                                <p className="text-sm">Start a new execution to see it here</p>
+                                <Filter className="h-12 w-12 mx-auto mb-4 text-gray-300"/>
+                                <p className="text-lg font-medium mb-2">Apply filters to search executions</p>
+                                <p className="text-sm">Use the filters above to find executions by state machine, status, date range, or more</p>
                             </>
                         )}
                     </div>
