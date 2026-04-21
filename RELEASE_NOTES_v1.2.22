@@ -1,0 +1,21 @@
+# Release Notes - v1.2.22
+
+## Overview
+This release focuses on database performance optimizations and schema refinement to ensure smoother query execution and better data integrity as the portal scales.
+
+## Key Changes
+
+### 🚀 Performance & Indexing
+- **New Composite Indexes**: Added several optimized composite indexes to the `executions` and `state_history` tables to significantly speed up dashboard queries and filtering:
+  - `idx_state_machine_current_state_start_time`: Optimizes searches by state machine and start time.
+  - `idx_state_machine_current_state_start_time_status`: Enhances filtering by state, time, and status combined.
+  - `idx_state_machine_status_start_time`: Improves performance for status-based dashboard widgets.
+  - `idx_state_machine_status_start_time_current_state`: Comprehensive index for complex filtered views.
+
+### 🛠 Schema Refactoring
+- **Constraint Optimization**: Refactored database schema constraints to streamline `CHECK` and `FOREIGN KEY` handling, improving write performance and ensuring stricter data consistency across the execution history.
+
+## Technical Details
+- **Version**: v1.2.22
+- **Date**: 2026-04-21
+- **Focus**: Database Optimization & Schema Integrity

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.22] - 2026-04-21
+
+### Added
+- **Database Indexing**: Added composite indexes to optimize execution and state history queries:
+  - `idx_state_machine_current_state_start_time`
+  - `idx_state_machine_current_state_start_time_status`
+  - `idx_state_machine_status_start_time`
+  - `idx_state_machine_status_start_time_current_state`
+
+### Changed
+- **Schema Refactoring**: Refactored schema constraints to streamline `CHECK` and `FOREIGN KEY` handling for improved performance and consistency.
+
 ## [1.1.6] - 2026-04-15
 
 ### Changed
