@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,86 +13,166 @@ import {
     DialogTitle,
     DialogTrigger
 } from '@/components/ui/dialog';
-import { Loader2, Play, Link2, GitBranch } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Loader2, Play, Package, GitBranch, Upload, FileJson, Layers, Cloud } from "lucide-react";
 import { toast } from 'sonner';
-// ✅ Import the new reusable component
 import { TransformerSelect } from '@/components/ui/transformer-select';
 
-interface StartExecutionModalProps {
+interface StartBulkExecutionModalProps {
     stateMachineId: string;
     stateMachineName: string;
     onSuccess?: () => void;
     disabled?: boolean;
 }
 
-export function StartExecutionModal({
-                                        stateMachineId,
-                                        stateMachineName,
-                                        onSuccess,
-                                        disabled = false
-                                    }: StartExecutionModalProps) {
+export function StartBulkExecutionModal({
+    stateMachineId,
+    stateMachineName,
+    onSuccess,
+    disabled = false
+}: StartBulkExecutionModalProps) {
     const [open, setOpen] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [inputMethod, setInputMethod] = useState<'json' | 'file' | 's3'>('json');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [s3Url, setS3Url] = useState('');
     const [formData, setFormData] = useState({
-        name: `execution-${stateMachineName.replace(/\s+/g, '-')}-${Date.now()}`,
-        input: JSON.stringify({
-            "order": {
-                "orderId": `ORD-${Date.now()}`,
-                "customerId": "CUST-001",
-                "items": ["item_1", "item_2"],
-                "timestamp": Math.floor(Date.now() / 1000),
-                "total": 150
-            }
-        }, null, 2),
-        sourceExecutionId: '',
-        sourceStateName: '',
-        sourceInputTransformer: '', // ✅ Now only accepts transformer IDs from dropdown
+        namePrefix: `bulk-${stateMachineName.replace(/\s+/g, '-')}-${Date.now()}`,
+        groupEnqueue: false,
+        concurrency: '10',
+        mode: 'concurrent' as 'concurrent' | 'sequential',
+        stopOnError: false,
+        inputs: JSON.stringify([], null, 2),
+        doMicroBatch: true,
+        microBatchSize: '5',
+        orchestratorId: `bulk-orchestrator-${Date.now()}`,
+        pauseThreshold: '0.1',
+        resumeStrategy: 'manual' as 'manual' | 'auto',
+        timeoutSeconds: '300',
     });
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 1024 * 1024 * 1024) {
+                setError('File size must be less than 1 GB');
+                setSelectedFile(null);
+                return;
+            }
+            if (!file.name.endsWith('.json')) {
+                setError('File must be a JSON file');
+                setSelectedFile(null);
+                return;
+            }
+            setError(null);
+            setSelectedFile(file);
+        }
+    };
+
+    const validateS3Url = (url: string): boolean => {
+        const s3Pattern = /^s3:\/\/[a-z0-9][a-z0-9.-]*[a-z0-9]\/.*\.json$/i;
+        const httpsS3Pattern = /^https:\/\/[a-z0-9][a-z0-9.-]*\.s3\.[a-z0-9-]+\.amazonaws\.com\/.*\.json$/i;
+        const httpsS3PathPattern = /^https:\/\/s3\.[a-z0-9-]+\.amazonaws\.com\/[a-z0-9][a-z0-9.-]*\/.*\.json$/i;
+        return s3Pattern.test(url) || httpsS3Pattern.test(url) || httpsS3PathPattern.test(url);
+    };
+
+    const validateInputs = (): boolean => {
+        if (inputMethod === 'file') {
+            if (!selectedFile) {
+                setError('Please select a JSON file');
+                return false;
+            }
+            return true;
+        }
+
+        if (inputMethod === 's3') {
+            if (!s3Url.trim()) {
+                setError('Please enter an S3 URL');
+                return false;
+            }
+            if (!validateS3Url(s3Url.trim())) {
+                setError('Invalid S3 URL. Use format: s3://bucket/path/file.json or https://bucket.s3.region.amazonaws.com/path/file.json');
+                return false;
+            }
+            return true;
+        }
+
+        try {
+            const inputs = JSON.parse(formData.inputs);
+            if (!Array.isArray(inputs)) {
+                setError('Inputs must be a JSON array');
+                return false;
+            }
+            return true;
+        } catch {
+            setError('Invalid JSON in inputs array');
+            return false;
+        }
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
+        const { name, value, type } = e.target;
+        const checked = (e.target as HTMLInputElement).checked;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+        setError(null);
+    };
+
+    const handleSelectChange = (name: string, value: string) => {
         setFormData(prev => ({ ...prev, [name]: value }));
         setError(null);
     };
 
-    const handleTransformerChange = (value: string) => {
-        // Convert "none" to empty string for API compatibility
-        // This ensures sourceInputTransformer is not sent when "None" is selected
-        const actualValue = value === "none" ? "" : value;
-        setFormData(prev => ({ ...prev, sourceInputTransformer: actualValue }));
+    const handleCheckboxChange = (name: string, checked: boolean) => {
+        setFormData(prev => ({ ...prev, [name]: checked }));
         setError(null);
-    };
-
-    const validateInput = (input: string): boolean => {
-        try {
-            JSON.parse(input);
-            return true;
-        } catch {
-            return false;
-        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.name.trim()) {
-            setError('Execution name is required');
+        if (!formData.namePrefix.trim()) {
+            setError('Name prefix is required');
             return;
         }
 
-        const hasInput = formData.input.trim() !== '';
-        const hasSourceExecutionId = formData.sourceExecutionId.trim() !== '';
-
-        if (!hasInput && !hasSourceExecutionId) {
-            setError('Either Execution Input OR Source Execution ID must be provided');
+        if (!validateInputs()) {
             return;
         }
 
-        if (hasInput && !validateInput(formData.input)) {
-            setError('Invalid JSON in execution input');
+        const concurrency = parseInt(formData.concurrency);
+        const microBatchSize = parseInt(formData.microBatchSize);
+        const pauseThreshold = parseFloat(formData.pauseThreshold);
+        const timeoutSeconds = parseInt(formData.timeoutSeconds);
+
+        if (isNaN(concurrency) || concurrency < 1) {
+            setError('Concurrency must be at least 1');
+            return;
+        }
+
+        if (formData.doMicroBatch && (isNaN(microBatchSize) || microBatchSize < 1)) {
+            setError('Micro batch size must be at least 1');
+            return;
+        }
+
+        if (isNaN(pauseThreshold) || pauseThreshold < 0 || pauseThreshold > 1) {
+            setError('Pause threshold must be between 0 and 1');
+            return;
+        }
+
+        if (isNaN(timeoutSeconds) || timeoutSeconds < 1) {
+            setError('Timeout seconds must be at least 1');
             return;
         }
 
@@ -100,74 +180,125 @@ export function StartExecutionModal({
         setError(null);
 
         try {
-            const requestBody: any = {
-                stateMachineId: stateMachineId,
-                name: formData.name.trim(),
-            };
+            if (inputMethod === 'file' && selectedFile) {
+                // Use form-data endpoint for file upload
+                const formFormData = new FormData();
+                formFormData.append('inputs', selectedFile);
+                formFormData.append('namePrefix', formData.namePrefix.trim());
+                formFormData.append('groupEnqueue', formData.groupEnqueue.toString());
+                formFormData.append('concurrency', concurrency.toString());
+                formFormData.append('mode', formData.mode);
+                formFormData.append('stopOnError', formData.stopOnError.toString());
+                formFormData.append('doMicroBatch', formData.doMicroBatch.toString());
+                if (formData.doMicroBatch) {
+                    formFormData.append('microBatchSize', microBatchSize.toString());
+                }
+                if (formData.orchestratorId.trim()) {
+                    formFormData.append('orchestratorId', formData.orchestratorId.trim());
+                }
 
-            if (hasInput) {
-                requestBody.input = JSON.parse(formData.input);
+                const response = await fetch(`/api/executions/launch-bulk-form?stateMachineId=${encodeURIComponent(stateMachineId)}`, {
+                    method: 'POST',
+                    body: formFormData,
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                toast.success(`Bulk execution started successfully!`, {
+                    description: `Orchestrator ID: ${result.orchestratorId}`,
+                });
+            } else if (inputMethod === 's3') {
+                // Use JSON endpoint with S3 URL
+                const requestBody = {
+                    stateMachineId: stateMachineId,
+                    namePrefix: formData.namePrefix.trim(),
+                    groupEnqueue: formData.groupEnqueue,
+                    concurrency: concurrency,
+                    mode: formData.mode,
+                    stopOnError: formData.stopOnError,
+                    s3Url: s3Url.trim(),
+                    doMicroBatch: formData.doMicroBatch,
+                    microBatchSize: formData.doMicroBatch ? microBatchSize : undefined,
+                    orchestratorId: formData.orchestratorId.trim(),
+                    pauseThreshold: pauseThreshold,
+                    resumeStrategy: formData.resumeStrategy,
+                    timeoutSeconds: timeoutSeconds,
+                };
+
+                const response = await fetch('/api/executions/launch-bulk', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                toast.success(`Bulk execution started successfully!`, {
+                    description: `Name prefix: ${result.namePrefix || formData.namePrefix}`,
+                });
+            } else {
+                // Use JSON endpoint for raw JSON input
+                const requestBody = {
+                    stateMachineId: stateMachineId,
+                    namePrefix: formData.namePrefix.trim(),
+                    groupEnqueue: formData.groupEnqueue,
+                    concurrency: concurrency,
+                    mode: formData.mode,
+                    stopOnError: formData.stopOnError,
+                    inputs: JSON.parse(formData.inputs),
+                    doMicroBatch: formData.doMicroBatch,
+                    microBatchSize: formData.doMicroBatch ? microBatchSize : undefined,
+                    orchestratorId: formData.orchestratorId.trim(),
+                    pauseThreshold: pauseThreshold,
+                    resumeStrategy: formData.resumeStrategy,
+                    timeoutSeconds: timeoutSeconds,
+                };
+
+                const response = await fetch('/api/executions/launch-bulk', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                toast.success(`Bulk execution started successfully!`, {
+                    description: `Name prefix: ${result.namePrefix || formData.namePrefix}`,
+                });
             }
-
-            if (hasSourceExecutionId) {
-                requestBody.sourceExecutionId = formData.sourceExecutionId.trim();
-            }
-
-            if (formData.sourceStateName.trim()) {
-                requestBody.sourceStateName = formData.sourceStateName.trim();
-            }
-
-            // ✅ Only send transformer if selected (not empty string)
-            if (formData.sourceInputTransformer.trim()) {
-                requestBody.sourceInputTransformer = formData.sourceInputTransformer.trim();
-            }
-
-            const response = await fetch('/api/executions/launch', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP ${response.status}`);
-            }
-
-            const launched = await response.json();
-
-            toast.success(`Execution "${launched.name}" started successfully!`, {
-                description: `Execution ID: ${launched.executionId}`,
-            });
 
             if (onSuccess) {
                 onSuccess();
             }
 
             setOpen(false);
-            setFormData({
-                name: `execution-${stateMachineName.replace(/\s+/g, '-')}-${Date.now()}`,
-                input: JSON.stringify({
-                    "order": {
-                        "orderId": `ORD-${Date.now()}`,
-                        "customerId": "CUST-001",
-                        "items": ["item_1", "item_2"],
-                        "timestamp": Math.floor(Date.now() / 1000),
-                        "total": 150
-                    }
-                }, null, 2),
-                sourceExecutionId: '',
-                sourceStateName: '',
-                sourceInputTransformer: '',
-            });
-            setShowAdvancedOptions(false);
+            setSelectedFile(null);
+            setS3Url('');
 
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Failed to launch execution';
+            const errorMessage = err instanceof Error ? err.message : 'Failed to launch bulk execution';
             setError(errorMessage);
 
-            toast.error('Failed to start execution', {
+            toast.error('Failed to start bulk execution', {
                 description: errorMessage,
             });
         } finally {
@@ -178,146 +309,361 @@ export function StartExecutionModal({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button disabled={disabled}>
-                    <Play className="h-4 w-4 mr-2" />
-                    Start Execution
+                <Button variant="outline" disabled={disabled}>
+                    <Package className="h-4 w-4 mr-2" />
+                    Start Bulk Execution
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
                 <DialogHeader>
-                    <DialogTitle>Start New Execution</DialogTitle>
+                    <DialogTitle>Start Bulk Execution</DialogTitle>
                     <DialogDescription>
-                        Launch a new execution for state machine: <strong>{stateMachineName}</strong>
+                        Launch multiple executions with custom inputs for state machine: <strong>{stateMachineName}</strong>
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* SCROLLABLE CONTENT AREA */}
-                <div className="overflow-y-auto max-h-[60vh] pr-2">
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <label htmlFor="name" className="text-sm font-medium">Execution Name</label>
-                            <Input
-                                id="name"
-                                name="name"
-                                value={formData.name}
-                                onChange={handleChange}
-                                placeholder="execution-order-processing-123"
-                                disabled={loading}
-                                required
-                            />
-                        </div>
+                <form onSubmit={handleSubmit} className="flex flex-col h-full">
+                    <div className="overflow-y-auto max-h-[70vh] pr-2 flex-1">
+                        {/* Bulk Inputs Section */}
+                        <div className="space-y-4 p-4 bg-purple-50 rounded-lg">
+                            <h3 className="text-sm font-medium text-purple-700 flex items-center">
+                                <GitBranch className="h-4 w-4 mr-2" />
+                                Bulk Inputs
+                            </h3>
 
-                        <div className="space-y-2">
-                            <label htmlFor="input" className="text-sm font-medium">
-                                Execution Input (JSON) - <em>Required if not using Source Execution</em>
-                            </label>
-                            <Textarea
-                                id="input"
-                                name="input"
-                                value={formData.input}
-                                onChange={handleChange}
-                                placeholder="Enter valid JSON input data (leave empty if using Source Execution)"
-                                className="font-mono text-sm min-h-[200px]"
-                                disabled={loading}
-                            />
-                            <p className="text-xs text-gray-500">
-                                Provide input data as JSON, OR leave empty and use Source Execution below
-                            </p>
-                        </div>
+                            {/* Input Method Toggle */}
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant={inputMethod === 'json' ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setInputMethod('json')}
+                                    className="flex-1"
+                                >
+                                    <FileJson className="h-4 w-4 mr-2" />
+                                    JSON Input
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={inputMethod === 'file' ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setInputMethod('file')}
+                                    className="flex-1"
+                                >
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    File Upload
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={inputMethod === 's3' ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setInputMethod('s3')}
+                                    className="flex-1"
+                                >
+                                    <Cloud className="h-4 w-4 mr-2" />
+                                    S3 URL
+                                </Button>
+                            </div>
 
-                        {/* Advanced Options Toggle */}
-                        <div className="pt-2">
-                            <button
-                                type="button"
-                                onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-                                className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
-                            >
-                                {showAdvancedOptions ? 'Hide Advanced Options' : 'Show Advanced Options'}
-                                <GitBranch className="h-3 w-3 ml-1" />
-                            </button>
-                        </div>
-
-                        {/* Advanced Options */}
-                        {showAdvancedOptions && (
-                            <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                                <h3 className="text-sm font-medium text-gray-700 flex items-center">
-                                    <Link2 className="h-4 w-4 mr-2" />
-                                    Resume from Another Execution (Optional)
-                                </h3>
-                                <p className="text-xs text-gray-500 mb-4">
-                                    Provide a Source Execution ID to resume execution from another workflow.
-                                    Source State Name and Input Transformer are optional.
-                                </p>
-
+                            {inputMethod === 'json' && (
                                 <div className="space-y-2">
-                                    <label htmlFor="sourceExecutionId" className="text-sm font-medium">
-                                        Source Execution ID - <em>Required if not providing Input</em>
+                                    <label htmlFor="inputs" className="text-sm font-medium">
+                                        Inputs Array (JSON) *
+                                    </label>
+                                    <Textarea
+                                        id="inputs"
+                                        name="inputs"
+                                        value={formData.inputs}
+                                        onChange={handleChange}
+                                        placeholder='[{"orderId": "1"}, {"orderId": "2"}]'
+                                        className="font-mono text-sm min-h-[200px]"
+                                        disabled={loading}
+                                        required
+                                    />
+                                    <p className="text-xs text-gray-500">
+                                        Provide an array of JSON objects. Each object will trigger a separate execution.
+                                    </p>
+                                </div>
+                            )}
+                            {inputMethod === 'file' && (
+                                <div className="space-y-2">
+                                    <label htmlFor="inputsFile" className="text-sm font-medium">
+                                        Upload JSON File *
                                     </label>
                                     <Input
-                                        id="sourceExecutionId"
-                                        name="sourceExecutionId"
-                                        value={formData.sourceExecutionId}
+                                        id="inputsFile"
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileChange}
+                                        accept=".json,application/json"
+                                        disabled={loading}
+                                        className="cursor-pointer"
+                                    />
+                                    {selectedFile && (
+                                        <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded">
+                                            <FileJson className="h-4 w-4" />
+                                            <span>{selectedFile.name}</span>
+                                            <span className="text-gray-500">({(selectedFile.size / 1024).toFixed(2)} KB)</span>
+                                        </div>
+                                    )}
+                                    <p className="text-xs text-gray-500">
+                                        Upload a JSON file containing an array of inputs. Max file size: 100MB.
+                                    </p>
+                                </div>
+                            )}
+                            {inputMethod === 's3' && (
+                                <div className="space-y-2">
+                                    <label htmlFor="s3Url" className="text-sm font-medium">
+                                        S3 URL *
+                                    </label>
+                                    <Input
+                                        id="s3Url"
+                                        name="s3Url"
+                                        value={s3Url}
+                                        onChange={(e) => { setS3Url(e.target.value); setError(null); }}
+                                        placeholder="s3://my-bucket/path/to/inputs.json"
+                                        disabled={loading}
+                                        className="font-mono text-sm"
+                                    />
+                                    {s3Url && validateS3Url(s3Url) && (
+                                        <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded">
+                                            <Cloud className="h-4 w-4" />
+                                            <span>Valid S3 URL</span>
+                                        </div>
+                                    )}
+                                    <p className="text-xs text-gray-500">
+                                        Supported formats:<br />
+                                        • <code>s3://bucket-name/path/to/file.json</code><br />
+                                        • <code>https://bucket.s3.region.amazonaws.com/path/file.json</code>
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Bulk Configuration Section */}
+                        <div className="space-y-4 p-4 bg-green-50 rounded-lg">
+                            <h3 className="text-sm font-medium text-green-700 flex items-center">
+                                <Package className="h-4 w-4 mr-2" />
+                                Bulk Configuration
+                            </h3>
+
+                            <div className="space-y-2">
+                                <label htmlFor="namePrefix" className="text-sm font-medium">Name Prefix *</label>
+                                <Input
+                                    id="namePrefix"
+                                    name="namePrefix"
+                                    value={formData.namePrefix}
+                                    onChange={handleChange}
+                                    placeholder="bulk-operation"
+                                    disabled={loading}
+                                    required
+                                />
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    id="groupEnqueue"
+                                    name="groupEnqueue"
+                                    type="checkbox"
+                                    checked={formData.groupEnqueue}
+                                    onChange={handleChange}
+                                    disabled={loading}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <label htmlFor="groupEnqueue" className="text-sm text-gray-700 flex items-center">
+                                    <Layers className="h-4 w-4 mr-1 text-blue-500" />
+                                    Group Enqueue
+                                </label>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label htmlFor="concurrency" className="text-sm font-medium">Concurrency</label>
+                                    <Input
+                                        id="concurrency"
+                                        name="concurrency"
+                                        type="number"
+                                        value={formData.concurrency}
                                         onChange={handleChange}
-                                        placeholder="state-machine-A-exec-123456789"
+                                        placeholder="10"
+                                        min="1"
                                         disabled={loading}
                                     />
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label htmlFor="sourceStateName" className="text-sm font-medium">
-                                        Source State Name (Optional)
-                                    </label>
-                                    <Input
-                                        id="sourceStateName"
-                                        name="sourceStateName"
-                                        value={formData.sourceStateName}
-                                        onChange={handleChange}
-                                        placeholder="IngestData"
+                                    <label htmlFor="mode" className="text-sm font-medium">Mode</label>
+                                    <Select
+                                        value={formData.mode}
+                                        onValueChange={(value) => handleSelectChange('mode', value)}
                                         disabled={loading}
-                                    />
-                                </div>
-
-                                {/* ✅ REUSABLE TRANSFORMER SELECT COMPONENT */}
-                                <div className="space-y-2">
-                                    <label htmlFor="sourceInputTransformer" className="text-sm font-medium">
-                                        Source Input Transformer (Optional)
-                                    </label>
-                                    <TransformerSelect
-                                        value={formData.sourceInputTransformer}
-                                        onChange={handleTransformerChange}
-                                        disabled={loading}
-                                        placeholder="Select a transformer..."
-                                    />
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="concurrent">Concurrent</SelectItem>
+                                            <SelectItem value="sequential">Sequential</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
-                        )}
+
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    id="stopOnError"
+                                    name="stopOnError"
+                                    type="checkbox"
+                                    checked={formData.stopOnError}
+                                    onChange={handleChange}
+                                    disabled={loading}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <label htmlFor="stopOnError" className="text-sm text-gray-700">
+                                    Stop on Error
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Micro Batch Configuration Section */}
+                        <div className="space-y-4 p-4 bg-blue-50 rounded-lg">
+                            <h3 className="text-sm font-medium text-blue-700 flex items-center">
+                                <GitBranch className="h-4 w-4 mr-2" />
+                                Micro Batch Configuration
+                            </h3>
+
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    id="doMicroBatch"
+                                    name="doMicroBatch"
+                                    type="checkbox"
+                                    checked={formData.doMicroBatch}
+                                    onChange={handleChange}
+                                    disabled={loading}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <label htmlFor="doMicroBatch" className="text-sm text-gray-700 font-medium">
+                                    Enable Micro Batching
+                                </label>
+                            </div>
+
+                            {formData.doMicroBatch && (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label htmlFor="microBatchSize" className="text-sm font-medium">Micro Batch Size</label>
+                                        <Input
+                                            id="microBatchSize"
+                                            name="microBatchSize"
+                                            type="number"
+                                            value={formData.microBatchSize}
+                                            onChange={handleChange}
+                                            placeholder="5"
+                                            min="1"
+                                            disabled={loading}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label htmlFor="orchestratorId" className="text-sm font-medium">Orchestrator ID</label>
+                                        <Input
+                                            id="orchestratorId"
+                                            name="orchestratorId"
+                                            value={formData.orchestratorId}
+                                            onChange={handleChange}
+                                            placeholder="micro-bulk-orchestrator-v1"
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Advanced Configuration Section */}
+                        <div className="space-y-4 p-4 bg-orange-50 rounded-lg">
+                            <h3 className="text-sm font-medium text-orange-700 flex items-center">
+                                <Package className="h-4 w-4 mr-2" />
+                                Advanced Configuration
+                            </h3>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label htmlFor="pauseThreshold" className="text-sm font-medium">Pause Threshold</label>
+                                    <Input
+                                        id="pauseThreshold"
+                                        name="pauseThreshold"
+                                        type="number"
+                                        value={formData.pauseThreshold}
+                                        onChange={handleChange}
+                                        placeholder="0.1"
+                                        min="0"
+                                        max="1"
+                                        step="0.1"
+                                        disabled={loading}
+                                    />
+                                    <p className="text-xs text-gray-500">
+                                        Threshold (0-1) to trigger pause
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label htmlFor="resumeStrategy" className="text-sm font-medium">Resume Strategy</label>
+                                    <Select
+                                        value={formData.resumeStrategy}
+                                        onValueChange={(value) => handleSelectChange('resumeStrategy', value)}
+                                        disabled={loading}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="manual">Manual</SelectItem>
+                                            <SelectItem value="auto">Auto</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="timeoutSeconds" className="text-sm font-medium">Timeout (seconds)</label>
+                                <Input
+                                    id="timeoutSeconds"
+                                    name="timeoutSeconds"
+                                    type="number"
+                                    value={formData.timeoutSeconds}
+                                    onChange={handleChange}
+                                    placeholder="300"
+                                    min="1"
+                                    disabled={loading}
+                                />
+                            </div>
+                        </div>
 
                         {error && (
                             <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
                                 {error}
                             </div>
                         )}
-                    </form>
-                </div>
+                    </div>
 
-                <DialogFooter className="pt-4">
-                    <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
-                        Cancel
-                    </Button>
-                    <Button type="submit" disabled={loading} onClick={handleSubmit}>
-                        {loading ? (
-                            <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Starting...
-                            </>
-                        ) : (
-                            <>
-                                <Play className="h-4 w-4 mr-2" />
-                                Start Execution
-                            </>
-                        )}
-                    </Button>
-                </DialogFooter>
+                    <DialogFooter className="pt-4">
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={loading}>
+                            {loading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Starting...
+                                </>
+                            ) : (
+                                <>
+                                    <Play className="h-4 w-4 mr-2" />
+                                    Start Bulk Execution
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );
