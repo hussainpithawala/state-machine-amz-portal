@@ -9,14 +9,18 @@ const launchBulkExecutionSchema = z.object({
     concurrency: z.number().int().min(1).optional().default(10),
     mode: z.enum(['concurrent', 'sequential']).optional().default('concurrent'),
     stopOnError: z.boolean().optional().default(false),
-    inputs: z.array(z.any()).min(1, 'At least one input is required'),
+    inputs: z.array(z.any()).optional(),
+    s3Url: z.string().optional(),
     doMicroBatch: z.boolean().optional().default(true),
     microBatchSize: z.number().int().min(1).optional(),
     orchestratorId: z.string().optional(),
     pauseThreshold: z.number().min(0).max(1).optional().default(0.1),
     resumeStrategy: z.enum(['manual', 'auto']).optional().default('manual'),
     timeoutSeconds: z.number().int().min(1).optional().default(300),
-});
+}).refine(
+    (data) => (data.inputs && data.inputs.length > 0) || data.s3Url,
+    { message: 'Either inputs array or s3Url is required' }
+);
 
 export async function POST(request: NextRequest) {
     try {
@@ -40,6 +44,7 @@ export async function POST(request: NextRequest) {
                     mode: validated.mode,
                     stopOnError: validated.stopOnError,
                     inputs: validated.inputs,
+                    s3Url: validated.s3Url,
                     doMicroBatch: validated.doMicroBatch,
                     microBatchSize: validated.doMicroBatch ? validated.microBatchSize : undefined,
                     orchestratorId: validated.orchestratorId,
