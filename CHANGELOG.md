@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Schema Refactoring**: Refactored schema constraints to streamline `CHECK` and `FOREIGN KEY` handling for improved performance and consistency.
 
+## [1.1.7] - 2026-05-23
+
+### Added
+- **Bulk Execution**: Added support for S3 file uploads in bulk execution, providing an alternative to local file uploads.
+
 ## [1.1.6] - 2026-04-15
 
 ### Changed
