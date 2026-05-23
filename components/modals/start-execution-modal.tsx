@@ -31,7 +31,7 @@ interface StartBulkExecutionModalProps {
     disabled?: boolean;
 }
 
-export function StartBulkExecutionModal({
+export function StartExecutionModal({
     stateMachineId,
     stateMachineName,
     onSuccess,
