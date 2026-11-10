@@ -41,3 +41,10 @@ yarn-error.log*
 next-env.d.ts
 /.idea/
 /test_ci.sh
+/.junie/memory/errors.md
+/.junie/memory/feedback.md
+/.junie/memory/language.json
+/.junie/memory/memory.version
+/.continue/agents/new-config.yaml
+/opencode.json
+/.junie/memory/tasks.md
