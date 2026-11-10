@@ -221,7 +221,7 @@ export async function DELETE(request: NextRequest) {
         console.error('Error deleting linked executions:', error);
         if (error instanceof z.ZodError) {
             return NextResponse.json(
-                { error: error.errors[0]?.message || 'Invalid request' },
+                { error: error.issues[0]?.message || 'Invalid request' },
                 { status: 400 }
             );
         }
