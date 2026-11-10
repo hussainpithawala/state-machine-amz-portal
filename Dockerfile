@@ -1,8 +1,10 @@
 # Use Alpine-based Node.js to minimize OS-level attack surface
 FROM node:24-alpine AS base
 
-# Patch Alpine base packages (zlib CVE-2026-4738, musl CVE-2026-107891)
-RUN apk update && apk upgrade --no-cache
+# Patch Alpine base packages (musl CVE-2026-107891) and upgrade npm
+# to fix bundled transitive CVEs (undici, brace-expansion, ip-address, etc.)
+RUN apk update && apk upgrade --no-cache && \
+    npm install -g npm@latest
 
 # Set working directory
 WORKDIR /app
