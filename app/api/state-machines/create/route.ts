@@ -9,10 +9,10 @@ const createStateMachineSchema = z.object({
     id: z.string().min(1, 'ID is required'),
     name: z.string().min(1, 'Name is required'),
     description: z.string().optional(),
-    definition: z.record(z.any()), // Accept any valid JSON object
+    definition: z.record(z.string(), z.any()),
     type: z.string().optional().default('STANDARD'),
     version: z.string().optional().default('1.0'),
-    metadata: z.record(z.any()).optional(),
+    metadata: z.record(z.string(), z.any()).optional(),
 });
 
 export async function POST(request: NextRequest) {

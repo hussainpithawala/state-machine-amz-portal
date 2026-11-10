@@ -5,7 +5,7 @@ import { z } from 'zod';
 const launchExecutionSchema = z.object({
     stateMachineId: z.string().min(1, 'State Machine ID is required'),
     name: z.string().min(1, 'Execution name is required'),
-    input: z.record(z.any()).optional(), // Now optional
+    input: z.record(z.string(), z.any()).optional(),
     sourceExecutionId: z.string().optional(), // Optional
     sourceStateName: z.string().optional(), // Optional
     sourceInputTransformer: z.string().optional(), // ✅ NEW FIELD
