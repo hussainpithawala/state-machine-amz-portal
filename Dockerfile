@@ -1,5 +1,5 @@
-# Use the official Node.js runtime as base image (Debian-based, linux/amd64)
-FROM node:24 AS base
+# Use Alpine-based Node.js to minimize OS-level attack surface
+FROM node:24-alpine AS base
 
 # Set working directory
 WORKDIR /app
@@ -17,9 +17,9 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
-# Create non-root user
-RUN groupadd --system --gid 1001 nodejs
-RUN useradd --system --uid 1001 --gid nodejs nextjs
+# Create non-root user (Alpine syntax)
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 --ingroup nodejs nextjs
 
 # Install production dependencies as root
 COPY package.json package-lock.json* ./
@@ -41,9 +41,9 @@ EXPOSE $PORT
 RUN chown -R nextjs:nodejs ./
 USER nextjs
 
-# Health check using dynamic port
+# Health check using wget (bundled in Alpine) instead of curl
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:$PORT/api/health || exit 1
+  CMD wget -qO- http://localhost:$PORT/api/health || exit 1
 
 # Start the application with dynamic port
 CMD ["node", "server.js"]
